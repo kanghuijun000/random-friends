@@ -32,7 +32,18 @@ Deno.serve(async (req) => {
 
   try {
     const url = Deno.env.get("SUPABASE_URL");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    // Current Supabase projects expose secret keys as a JSON map.
+    // Keep the legacy variable as a fallback for older project runtimes.
+    let serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    const secretKeysJson = Deno.env.get("SUPABASE_SECRET_KEYS");
+    if (!serviceKey && secretKeysJson) {
+      try {
+        const secretKeys = JSON.parse(secretKeysJson);
+        serviceKey = secretKeys.default || "";
+      } catch (_) {
+        // Fall through to the configuration check below.
+      }
+    }
     const accessCode = Deno.env.get("RF_TEST_ACCESS_CODE");
     if (!url || !serviceKey || !accessCode) return json({ error: "SERVER_NOT_CONFIGURED" }, 503);
 
