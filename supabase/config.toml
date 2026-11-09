@@ -1,0 +1,2 @@
+[functions.random-friends]
+verify_jwt = false
