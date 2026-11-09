@@ -4,20 +4,22 @@ Random Friends shares the existing Color-balls Supabase project, but uses only i
 
 ## 1. Database migrations
 
-Run these files in order in the **Color-balls** project's SQL Editor:
+The first migration (`001_random_friends.sql`) creates the isolated database tables. If it has already been run, do not run it again.
 
-1. `supabase/migrations/001_random_friends.sql`
-2. `supabase/migrations/002_test_matching_backend.sql`
+Now run this second migration in the **Color-balls** project's SQL Editor:
 
-The migrations create or update only `rf_*` objects. They do not modify `cb_*` tables. Browser roles have no direct table access.
+- `supabase/migrations/002_test_matching_backend.sql`
+
+It adds short-lived test-session token storage and the server-only atomic matching function. It changes only `rf_*` objects.
 
 ## 2. Deploy the Edge Function
 
-Deploy the function named `random-friends` using the source at:
+Deploy a function named `random-friends` using:
 
-`supabase/functions/random-friends/index.ts`
+- `supabase/functions/random-friends/index.ts`
+- `supabase/config.toml`
 
-The repository also contains `supabase/config.toml`, which disables gateway JWT verification for this function because the app uses a publishable key and its own short-lived test-session tokens. The function itself checks the test access code when creating a session and checks a random session token on every later request.
+The function supports test-session creation, separate chat/call queues, room matching, chat messages, next, and end. The website now calls this function and polls for room/message updates.
 
 ## 3. Function secrets
 
@@ -27,7 +29,9 @@ In the Supabase dashboard for the Color-balls project, open the Edge Functions s
 - `SUPABASE_SERVICE_ROLE_KEY`: the project's service-role/secret key. Keep this only in Supabase server secrets. Never put it in GitHub, the app, or a message.
 - `RF_TEST_ACCESS_CODE`: a long, random test-only access code that you choose. It must not be committed to this repository or shared publicly.
 
-Supabase may provide its project URL and service-role key to Edge Functions automatically. If they are already present, do not create duplicate values. Only add the missing variables and the private `RF_TEST_ACCESS_CODE`.
+Supabase may provide its project URL and service-role key to Edge Functions automatically. If they are already present, do not create duplicate values. Only add missing variables and the private `RF_TEST_ACCESS_CODE`.
+
+The app has a test-code field on its home screen. Enter the same code that you saved as `RF_TEST_ACCESS_CODE`. Do not send the code or service-role key in this chat.
 
 ## 4. Testing boundary
 
@@ -35,7 +39,12 @@ This is a closed test backend, not a public random-chat service. Share the test 
 
 ## 5. Current implementation limits
 
-The Edge Function supports test-session creation, separate chat/call queues, room matching, chat messages, next, and end. The website client still needs to be connected to this function and tested. Real audio/video transport (WebRTC signaling and media connection) is a separate unfinished step; a call-mode match alone does not mean a call is connected.
+- Chat: server-side matching and message send/receive polling are implemented, but still require deployment and real-device testing.
+- Call: matching is implemented, but real audio/video transport (WebRTC signaling and media connection) is not. The camera preview is local to the device; the mic control remains disabled.
+- Country: country selection is manual; automatic country detection is not implemented.
+- Matching uses short-lived sessions. If a browser is closed without ending a session, it may remain in the queue until its 15-minute expiry is cleaned up.
+
+Do not treat matching or messaging as verified until two approved test devices have completed a real test.
 
 ## 6. Free-tier note
 
