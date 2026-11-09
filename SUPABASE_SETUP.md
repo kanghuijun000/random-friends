@@ -1,26 +1,42 @@
 # Supabase setup
 
-This project shares the existing Color-balls Supabase project, but uses a separate set of `rf_*` tables.
+Random Friends shares the existing Color-balls Supabase project, but uses only its own `rf_*` tables and Edge Function. The Risk game project is not used.
 
-## 1. Apply the database foundation
+## 1. Database migrations
 
-1. Open the Supabase dashboard for the **Color-balls** project.
-2. Open **SQL Editor** and create a new query.
-3. Open `supabase/migrations/001_random_friends.sql` in this repository.
-4. Copy the complete SQL into the SQL Editor and run it once.
+Run these files in order in the **Color-balls** project's SQL Editor:
 
-The migration creates only `rf_sessions`, `rf_queue`, `rf_rooms`, and `rf_messages`. It does not modify `cb_*` tables.
+1. `supabase/migrations/001_random_friends.sql`
+2. `supabase/migrations/002_test_matching_backend.sql`
 
-## 2. Important security boundary
+The migrations create or update only `rf_*` objects. They do not modify `cb_*` tables. Browser roles have no direct table access.
 
-The migration intentionally denies direct table access to browser roles (`anon` and `authenticated`). Do not add permissive RLS policies or put a `service_role` key in the website.
+## 2. Deploy the Edge Function
 
-The next implementation step is a server-side Supabase Edge Function. It will validate short-lived test sessions and mediate queue, room, and message operations. Until that function is deployed and tested, the app must not claim that live matching or messaging works.
+Deploy the function named `random-friends` using the source at:
 
-## 3. Realtime and calls
+`supabase/functions/random-friends/index.ts`
 
-Realtime should be enabled only for the room/message flow after server authorization is in place. WebRTC signaling and any relay configuration are a separate step; a publishable key alone does not provide a media relay.
+The repository also contains `supabase/config.toml`, which disables gateway JWT verification for this function because the app uses a publishable key and its own short-lived test-session tokens. The function itself checks the test access code when creating a session and checks a random session token on every later request.
 
-## 4. Free-tier note
+## 3. Function secrets
 
-Sharing the project avoids creating a third Supabase project, but database, storage, bandwidth, and project usage are still shared with Color-balls.
+In the Supabase dashboard for the Color-balls project, open the Edge Functions secrets/settings area and ensure these server-side environment variables are available:
+
+- `SUPABASE_URL`: the Color-balls project URL.
+- `SUPABASE_SERVICE_ROLE_KEY`: the project's service-role/secret key. Keep this only in Supabase server secrets. Never put it in GitHub, the app, or a message.
+- `RF_TEST_ACCESS_CODE`: a long, random test-only access code that you choose. It must not be committed to this repository or shared publicly.
+
+Supabase may provide its project URL and service-role key to Edge Functions automatically. If they are already present, do not create duplicate values. Only add the missing variables and the private `RF_TEST_ACCESS_CODE`.
+
+## 4. Testing boundary
+
+This is a closed test backend, not a public random-chat service. Share the test access code only with people you personally know and have approved for testing. Do not publish the app or distribute the code publicly. The access code is a shared test gate, not a full identity or age-verification system.
+
+## 5. Current implementation limits
+
+The Edge Function supports test-session creation, separate chat/call queues, room matching, chat messages, next, and end. The website client still needs to be connected to this function and tested. Real audio/video transport (WebRTC signaling and media connection) is a separate unfinished step; a call-mode match alone does not mean a call is connected.
+
+## 6. Free-tier note
+
+Sharing the project avoids creating a third Supabase project, but database and function usage still count against the same Color-balls project's free-tier limits.
