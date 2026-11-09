@@ -34,13 +34,9 @@ Deno.serve(async (req) => {
     const url = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const accessCode = Deno.env.get("RF_TEST_ACCESS_CODE");
-    if (!url || !serviceKey || !accessCode) {
-      return json({ error: "SERVER_NOT_CONFIGURED" }, 503);
-    }
+    if (!url || !serviceKey || !accessCode) return json({ error: "SERVER_NOT_CONFIGURED" }, 503);
 
-    const db = createClient(url, serviceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+    const db = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const body = await req.json();
     const action = String(body.action || "");
 
@@ -86,9 +82,7 @@ Deno.serve(async (req) => {
 
     if (action === "start") {
       const supplied = String(body.accessCode || "");
-      if (!constantTimeEqual(supplied, accessCode)) {
-        return json({ error: "ACCESS_DENIED" }, 403);
-      }
+      if (!constantTimeEqual(supplied, accessCode)) return json({ error: "ACCESS_DENIED" }, 403);
       const mode = body.mode === "call" ? "call" : "chat";
       const scope = body.scope === "country" ? "country" : "world";
       const countryCode = scope === "country" ? String(body.countryCode || "").toUpperCase() : null;
@@ -99,21 +93,20 @@ Deno.serve(async (req) => {
       const sessionId = crypto.randomUUID();
       const sessionToken = hex(crypto.getRandomValues(new Uint8Array(32)).buffer);
       const tokenHash = await hash(sessionToken);
-      const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
       const { error } = await db.from("rf_sessions").insert({
         id: sessionId,
         mode,
         scope,
         country_code: countryCode,
         token_hash: tokenHash,
-        expires_at: expiresAt,
+        expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
       });
       if (error) throw error;
 
       const session = { id: sessionId, mode, scope, country_code: countryCode };
       await enqueue(session);
       const room = await activeRoom(sessionId);
-      return json({ sessionToken, status: room ? "matched" : "waiting", room });
+      return json({ sessionId, sessionToken, status: room ? "matched" : "waiting", room });
     }
 
     const session = await getSession();
@@ -128,27 +121,27 @@ Deno.serve(async (req) => {
         room = await activeRoom(session.id);
       }
       if (!room) return json({ status: "waiting" });
-
-      const partnerId = room.participant_a === session.id
-        ? room.participant_b : room.participant_a;
+      const partnerId = room.participant_a === session.id ? room.participant_b : room.participant_a;
       const { data: messages, error } = await db.from("rf_messages")
         .select("id,sender_session_id,body,created_at")
-        .eq("room_id", room.id)
-        .order("created_at", { ascending: true })
-        .limit(100);
+        .eq("room_id", room.id).order("created_at", { ascending: true }).limit(100);
       if (error) throw error;
-      return json({ status: "matched", room: { id: room.id, mode: room.mode }, partnerId, messages: messages || [] });
+      return json({
+        status: "matched",
+        sessionId: session.id,
+        room: { id: room.id, mode: room.mode },
+        partnerId,
+        messages: messages || [],
+      });
     }
 
     if (action === "send") {
-      const text = String(body.message || "").trim();
-      if (!text || text.length > 1000) return json({ error: "INVALID_MESSAGE" }, 400);
+      const message = String(body.message || "").trim();
+      if (!message || message.length > 1000) return json({ error: "INVALID_MESSAGE" }, 400);
       const room = await activeRoom(session.id);
       if (!room || room.mode !== "chat") return json({ error: "NO_ACTIVE_CHAT" }, 409);
       const { data, error } = await db.from("rf_messages").insert({
-        room_id: room.id,
-        sender_session_id: session.id,
-        body: text,
+        room_id: room.id, sender_session_id: session.id, body: message,
       }).select("id,sender_session_id,body,created_at").single();
       if (error) throw error;
       return json({ message: data });
@@ -161,10 +154,8 @@ Deno.serve(async (req) => {
         partnerId = room.participant_a === session.id ? room.participant_b : room.participant_a;
         await db.from("rf_rooms").update({ status: "ended", ended_at: new Date().toISOString() }).eq("id", room.id);
         const { data: partner, error } = await db.from("rf_sessions")
-          .select("id,mode,scope,country_code")
-          .eq("id", partnerId)
-          .gt("expires_at", new Date().toISOString())
-          .maybeSingle();
+          .select("id,mode,scope,country_code").eq("id", partnerId)
+          .gt("expires_at", new Date().toISOString()).maybeSingle();
         if (error) throw error;
         if (partner) await enqueue(partner, session.id);
       }
@@ -179,10 +170,8 @@ Deno.serve(async (req) => {
         const partnerId = room.participant_a === session.id ? room.participant_b : room.participant_a;
         await db.from("rf_rooms").update({ status: "ended", ended_at: new Date().toISOString() }).eq("id", room.id);
         const { data: partner, error } = await db.from("rf_sessions")
-          .select("id,mode,scope,country_code")
-          .eq("id", partnerId)
-          .gt("expires_at", new Date().toISOString())
-          .maybeSingle();
+          .select("id,mode,scope,country_code").eq("id", partnerId)
+          .gt("expires_at", new Date().toISOString()).maybeSingle();
         if (error) throw error;
         if (partner) await enqueue(partner, session.id);
       }
@@ -194,8 +183,7 @@ Deno.serve(async (req) => {
     return json({ error: "UNKNOWN_ACTION" }, 400);
   } catch (error) {
     const message = error instanceof Error ? error.message : "INTERNAL_ERROR";
-    const known = ["INVALID_SESSION"];
-    if (known.includes(message)) return json({ error: message }, 401);
+    if (message === "INVALID_SESSION") return json({ error: message }, 401);
     return json({ error: "SERVER_ERROR", detail: message }, 500);
   }
 });
