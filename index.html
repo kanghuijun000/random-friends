@@ -7,7 +7,7 @@
   <meta name="description" content="랜덤채팅과 랜덤통화를 선택하는 매칭 앱">
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=1">
+  <link rel="stylesheet" href="./style.css?v=2">
   <title>Random Friends</title>
 </head>
 <body>
@@ -33,7 +33,7 @@
           <label class="mode-card" for="mode-call">
             <input id="mode-call" type="radio" name="mode" value="call">
             <span class="mode-icon">◉</span>
-            <span class="mode-copy"><b>랜덤통화</b><small>음성·영상 연결 시도</small></span>
+            <span class="mode-copy"><b>랜덤통화</b><small>통화 상대 매칭 (통화 연결은 준비 중)</small></span>
             <span class="radio-dot"></span>
           </label>
         </div>
@@ -54,11 +54,18 @@
             <option value="FR">프랑스</option><option value="AU">호주</option>
             <option value="IN">인도</option><option value="BR">브라질</option>
           </select>
-          <p class="hint">국가 자동 감지는 서버 연결 단계에서 추가할 예정입니다. 지금은 직접 선택할 수 있어요.</p>
         </div>
       </div>
+
+      <div class="panel access-panel">
+        <h2>테스트 참여 코드</h2>
+        <input id="access-code" type="password" maxlength="128" placeholder="테스트 코드 입력" autocomplete="off">
+        <p class="hint">승인된 테스트 참여자에게만 코드를 공유하세요. 공개 배포용 기능이 아닙니다.</p>
+      </div>
+
       <button id="start-btn" class="primary-btn">매칭 시작 <span>→</span></button>
-      <p class="footnote">현재 버전은 화면 및 동작 기반을 구성한 단계입니다.</p>
+      <p id="home-error" class="error-text" role="status"></p>
+      <p class="footnote">현재는 승인된 참여자끼리 기능을 확인하는 비공개 테스트 단계입니다.</p>
     </section>
 
     <section id="matching" class="screen">
@@ -67,48 +74,46 @@
         <div class="pulse"><span></span></div>
         <div class="eyebrow" id="matching-mode-label">RANDOM CHAT</div>
         <h1>새로운 상대를<br>찾고 있어요</h1>
-        <p id="matching-description">매칭 대기열에 연결할 준비를 하고 있습니다.</p>
-        <div class="status-pill"><i></i> 매칭 대기 중</div>
+        <p id="matching-description">매칭 대기열에 연결하고 있습니다.</p>
+        <div class="status-pill"><i></i><span id="matching-status">매칭 대기 중</span></div>
       </div>
-      <div class="bottom-actions">
-        <button id="end-waiting" class="danger-btn">매칭 종료</button>
-      </div>
+      <div class="bottom-actions"><button id="end-waiting" class="danger-btn">매칭 종료</button></div>
     </section>
 
     <section id="chat" class="screen">
-      <header class="room-header"><div><div class="eyebrow">RANDOM CHAT</div><b>랜덤채팅</b></div><span class="status-pill"><i></i> 연결 화면</span></header>
-      <div id="messages" class="messages">
-        <div class="empty-chat"><div class="empty-icon">✦</div><b>새로운 대화방</b><p>상대가 연결되면 대화를 시작할 수 있어요.</p></div>
+      <header class="room-header"><div><div class="eyebrow">RANDOM CHAT</div><b>랜덤채팅</b></div><span class="status-pill"><i></i> 연결됨</span></header>
+      <div id="messages" class="messages" aria-live="polite">
+        <div class="empty-chat"><div class="empty-icon">✦</div><b>새로운 대화방</b><p>메시지를 보내 대화를 시작하세요.</p></div>
       </div>
       <form id="chat-form" class="composer">
-        <input id="message-input" type="text" maxlength="1000" placeholder="메시지를 입력하세요" autocomplete="off" disabled>
-        <button type="submit" aria-label="메시지 전송" disabled>↑</button>
+        <input id="message-input" type="text" maxlength="1000" placeholder="메시지를 입력하세요" autocomplete="off">
+        <button type="submit" aria-label="메시지 전송">↑</button>
       </form>
       <div class="room-actions">
         <button id="next-chat" class="primary-btn">↻ 다음 상대</button>
         <button id="end-chat" class="danger-btn">매칭 종료</button>
       </div>
-      <p class="footnote">실시간 상대 연결 및 메시지 전달은 매칭 서버 연결 후 활성화됩니다.</p>
     </section>
 
     <section id="call" class="screen">
-      <header class="room-header"><div><div class="eyebrow">RANDOM CALL</div><b>랜덤통화</b></div><span class="status-pill"><i></i> 연결 화면</span></header>
+      <header class="room-header"><div><div class="eyebrow">RANDOM CALL</div><b>랜덤통화</b></div><span class="status-pill"><i></i> 상대 매칭됨</span></header>
+      <div class="call-notice">상대 매칭까지만 구현되어 있습니다. 실제 음성·영상 연결은 아직 제공되지 않습니다.</div>
       <div class="video-stage">
-        <div class="video-tile remote"><div class="avatar">?</div><b>상대방</b><small>카메라 꺼짐</small></div>
+        <div class="video-tile remote"><div class="avatar">?</div><b>상대방</b><small>통화 연결 대기</small></div>
         <div class="video-tile local" id="local-tile"><video id="local-video" autoplay muted playsinline hidden></video><div class="avatar">나</div><b>나</b><small id="camera-state">카메라 꺼짐</small></div>
       </div>
       <div class="call-controls">
-        <button id="mic-toggle" class="control-btn" aria-pressed="false"><span>♩</span><small>마이크 켜기</small></button>
-        <button id="camera-toggle" class="control-btn" aria-pressed="false"><span>◉</span><small>카메라 켜기</small></button>
+        <button id="mic-toggle" class="control-btn" disabled><span>♩</span><small>마이크 준비 중</small></button>
+        <button id="camera-toggle" class="control-btn" aria-pressed="false"><span>◉</span><small>카메라 미리보기</small></button>
       </div>
       <div class="room-actions">
         <button id="next-call" class="primary-btn">↻ 다음 상대</button>
         <button id="end-call" class="danger-btn">매칭 종료</button>
       </div>
-      <p class="footnote">카메라는 기본적으로 꺼져 있습니다. 실제 상대 통화 연결은 WebRTC 서버 구성 후 활성화됩니다.</p>
+      <p class="footnote">카메라 미리보기는 이 기기에서만 표시되며 상대에게 전송되지 않습니다.</p>
     </section>
     <footer>RANDOM FRIENDS <span>·</span> FREE FIRST</footer>
   </main>
-  <script src="./script.js?v=1"></script>
+  <script src="./script.js?v=2"></script>
 </body>
 </html>
