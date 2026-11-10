@@ -779,7 +779,6 @@ async function toggleCamera() {
 
 $("#start-btn").addEventListener("click", beginSearch);
 $("#cancel-search").addEventListener("click", endMatch);
-$("#end-waiting").addEventListener("click", endMatch);
 $("#next-chat").addEventListener("click", nextMatch);
 $("#next-call").addEventListener("click", nextMatch);
 $("#end-chat").addEventListener("click", endMatch);
