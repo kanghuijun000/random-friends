@@ -20,7 +20,7 @@ Deploy a function named `random-friends` using:
 - `supabase/functions/random-friends/index.ts`
 - `supabase/config.toml`
 
-The function supports test-session creation, separate chat/call queues, room matching, chat messages, next/end, and WebRTC offer/answer/ICE signaling. The website polls for room, message, and call-signaling updates.
+The function supports session creation without a shared test password, separate chat/call queues, room matching, chat messages, next/end, and WebRTC offer/answer/ICE signaling. The website polls for room, message, and call-signaling updates.
 
 ## 3. Function secrets
 
@@ -28,15 +28,14 @@ In the Supabase dashboard for the Color-balls project, open the Edge Functions s
 
 - `SUPABASE_URL`: the Color-balls project URL.
 - `SUPABASE_SERVICE_ROLE_KEY`: the project's service-role/secret key. Keep this only in Supabase server secrets. Never put it in GitHub, the app, or a message.
-- `RF_TEST_ACCESS_CODE`: a long, random test-only access code that you choose. It must not be committed to this repository or shared publicly.
 
-Supabase may provide its project URL and service-role key to Edge Functions automatically. If they are already present, do not create duplicate values. Only add missing variables and the private `RF_TEST_ACCESS_CODE`.
+Supabase may provide its project URL and service-role key to Edge Functions automatically. If they are already present, do not create duplicate values. No test-code secret is required.
 
-The app has a test-code field on its home screen. Enter the same code that you saved as `RF_TEST_ACCESS_CODE`. Do not send the code or service-role key in this chat.
+The app no longer asks users for a shared test code. Do not send the service-role key in this chat.
 
-## 4. Testing boundary
+## 4. Access and safety
 
-This is a closed test backend, not a public random-chat service. Share the test access code only with people you personally know and have approved for testing. Do not publish the app or distribute the code publicly. The access code is a shared test gate, not a full identity or age-verification system.
+There is no shared test-code gate. Anyone who can reach the published site and function endpoint may attempt to create a session. Before promoting the app or sharing its URL, add and verify appropriate access controls, reporting/blocking, moderation, and age-appropriate safety measures. The public publishable key is not an access-control mechanism.
 
 ## 5. Current implementation limits
 
@@ -45,7 +44,7 @@ This is a closed test backend, not a public random-chat service. Share the test 
 - Country: country selection is manual; automatic country detection is not implemented.
 - Matching uses short-lived sessions. If a browser is closed without ending a session, it may remain in the queue until its 15-minute expiry is cleaned up.
 
-Do not treat matching or messaging as verified until two approved test devices have completed a real test.
+Do not treat matching or messaging as verified until two test devices have completed a real test.
 
 ## 6. Free-tier note
 
