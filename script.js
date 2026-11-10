@@ -165,7 +165,7 @@ async function ensureAudio() {
   audioOnly.getAudioTracks().forEach((track) => {
     track.enabled = micOn;
     localStream.addTrack(track);
-    if (peerConnection) peerConnection.addTrack(track, localStream);
+    if (audioSender) await audioSender.replaceTrack(track);
   });
 }
 async function setupCall(data) {
