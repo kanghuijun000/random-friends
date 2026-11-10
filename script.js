@@ -148,8 +148,9 @@ async function beginSearch() {
     $("#remote-state").textContent = "상대방을 찾고 있는 중...";
     $("#call-room-status").textContent = "상대 찾는 중";
     $("#call-status").textContent = "새로운 상대를 찾고 있습니다.";
-    $("#mic-toggle").disabled = true;
-    $("#camera-toggle").disabled = true;
+    // Mic and camera remain usable while searching; only next-partner is locked.
+    $("#mic-toggle").disabled = false;
+    $("#camera-toggle").disabled = false;
     $("#next-call").disabled = true;
   }
   $("#matching-mode-label").textContent = selectedMode === "chat" ? "RANDOM CHAT" : "RANDOM CALL";
@@ -279,7 +280,8 @@ async function ensureAudio() {
 async function setupCall(data) {
   const roomId = data.room.id;
   if (callSetupRoom === roomId) return;
-  cleanupCall();
+  // Preserve any mic/camera tracks the user enabled while waiting.
+  cleanupCall(true);
   callSetupRoom = roomId;
   currentRoomId = roomId;
   lastSignalId = 0;
@@ -292,7 +294,6 @@ async function setupCall(data) {
   setCallStatus("마이크 권한 확인 중…");
   try {
     await ensureAudio();
-    micOn = true;
     updateMicButton();
   } catch (_) {
     micOn = false;
@@ -308,7 +309,15 @@ async function setupCall(data) {
   audioSender = audioTransceiver.sender;
   videoSender = videoTransceiver.sender;
   const audioTrack = localStream?.getAudioTracks()[0] || null;
-  if (audioTrack) await audioSender.replaceTrack(audioTrack);
+  if (audioTrack) {
+    audioTrack.enabled = micOn;
+    await audioSender.replaceTrack(audioTrack);
+  }
+  const videoTrack = localStream?.getVideoTracks()[0] || null;
+  if (videoTrack) {
+    videoTrack.enabled = cameraOn;
+    await videoSender.replaceTrack(videoTrack);
+  }
   peerConnection.ontrack = (event) => {
     if (!remoteStream.getTracks().some((track) => track.id === event.track.id)) {
       remoteStream.addTrack(event.track);
@@ -463,8 +472,8 @@ async function nextMatch() {
     $("#remote-state").textContent = "상대방을 찾고 있는 중...";
     $("#call-room-status").textContent = "상대 찾는 중";
     $("#call-status").textContent = "새로운 상대를 찾고 있습니다.";
-    $("#mic-toggle").disabled = true;
-    $("#camera-toggle").disabled = true;
+    $("#mic-toggle").disabled = false;
+    $("#camera-toggle").disabled = false;
     $("#next-call").disabled = true;
   }
   chatPartnerAvailable = false;
@@ -472,7 +481,7 @@ async function nextMatch() {
   $("#chat-form button").disabled = true;
   setChatNotice("새로운 상대를 찾고 있습니다.");
   $("#messages").replaceChildren();
-  show("matching");
+  show(selectedMode === "call" ? "call" : "matching");
   $("#matching-mode-label").textContent = selectedMode === "chat" ? "RANDOM CHAT" : "RANDOM CALL";
   $("#matching-description").textContent = "다음 상대를 찾고 있습니다.";
   setMatchingStatus("매칭 대기 중");
@@ -523,7 +532,7 @@ function stopLocalMedia() {
   updateMicButton();
   updateCameraButton();
 }
-function cleanupCall() {
+function cleanupCall(preserveLocalMedia = false) {
   currentRoomId = "";
   callSetupRoom = "";
   pendingCandidates = [];
@@ -542,7 +551,7 @@ function cleanupCall() {
   $("#remote-video").hidden = true;
   $("#remote-avatar").hidden = false;
   if ($("#remote-state")) $("#remote-state").textContent = "상대방을 찾고 있는 중...";
-  stopLocalMedia();
+  if (!preserveLocalMedia) stopLocalMedia();
 }
 async function toggleMic() {
   micOn = !micOn;
