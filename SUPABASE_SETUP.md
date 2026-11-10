@@ -6,11 +6,12 @@ Random Friends shares the existing Color-balls Supabase project, but uses only i
 
 The first migration (`001_random_friends.sql`) creates the isolated database tables. If it has already been run, do not run it again.
 
-Now run this second migration in the **Color-balls** project's SQL Editor:
+Run these migrations in order in the **Color-balls** project SQL Editor. Skip any migration already applied:
 
 - `supabase/migrations/002_test_matching_backend.sql`
+- `supabase/migrations/003_webrtc_signaling.sql`
 
-It adds short-lived test-session token storage and the server-only atomic matching function. It changes only `rf_*` objects.
+Migration 002 adds short-lived test-session token storage and the server-only atomic matching function. Migration 003 creates the call-signaling table with server-only access. Both change only `rf_*` objects.
 
 ## 2. Deploy the Edge Function
 
@@ -19,7 +20,7 @@ Deploy a function named `random-friends` using:
 - `supabase/functions/random-friends/index.ts`
 - `supabase/config.toml`
 
-The function supports test-session creation, separate chat/call queues, room matching, chat messages, next, and end. The website now calls this function and polls for room/message updates.
+The function supports test-session creation, separate chat/call queues, room matching, chat messages, next/end, and WebRTC offer/answer/ICE signaling. The website polls for room, message, and call-signaling updates.
 
 ## 3. Function secrets
 
@@ -40,7 +41,7 @@ This is a closed test backend, not a public random-chat service. Share the test 
 ## 5. Current implementation limits
 
 - Chat: server-side matching and message send/receive polling are implemented, but still require deployment and real-device testing.
-- Call: matching is implemented, but real audio/video transport (WebRTC signaling and media connection) is not. The camera preview is local to the device; the mic control remains disabled.
+- Call: WebRTC signaling and browser media capture are implemented in code. The app uses a public STUN server only; there is no TURN relay, so some network combinations may fail to connect. Actual audio/video transport must still be verified with two approved devices.
 - Country: country selection is manual; automatic country detection is not implemented.
 - Matching uses short-lived sessions. If a browser is closed without ending a session, it may remain in the queue until its 15-minute expiry is cleaned up.
 
