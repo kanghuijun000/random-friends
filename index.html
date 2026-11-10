@@ -7,7 +7,7 @@
   <meta name="description" content="랜덤채팅과 랜덤통화를 선택하는 매칭 앱">
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=17">
+  <link rel="stylesheet" href="./style.css?v=18">
   <title>Random Friends</title>
 </head>
 <body>
@@ -63,7 +63,6 @@
     </section>
 
     <section id="matching" class="screen">
-      <button class="back-link" id="cancel-search">← 처음으로</button>
       <div class="waiting">
         <div class="pulse"><span></span></div>
         <div class="eyebrow" id="matching-mode-label">RANDOM CHAT</div>
@@ -71,6 +70,7 @@
         <p id="matching-description">매칭 대기열에 연결하고 있습니다.</p>
         <div class="status-pill"><i></i><span id="matching-status">매칭 대기 중</span></div>
       </div>
+      <div class="bottom-actions"><button id="end-waiting" class="danger-btn">매칭 종료</button></div>
     </section>
 
     <section id="chat" class="screen">
@@ -136,6 +136,6 @@
     </div>
     <footer>RANDOM FRIENDS <span>·</span> FREE FIRST</footer>
   </main>
-  <script src="./script.js?v=17"></script>
+  <script src="./script.js?v=18"></script>
 </body>
 </html>
