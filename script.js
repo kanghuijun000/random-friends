@@ -96,6 +96,8 @@ function returnHomeAfterNetworkFailure(message = "인터넷 연결 실패: 네�
   cleanupCall();
   sessionToken = "";
   sessionId = "";
+  currentChatRoomId = "";
+  chatPartnerAvailable = false;
   busy = false;
   $("#message-input").value = "";
   $("#message-input").disabled = true;
@@ -133,6 +135,10 @@ async function beginSearch() {
     return;
   }
   busy = true;
+  currentChatRoomId = "";
+  chatPartnerAvailable = false;
+  lastChatNotice = "";
+  setChatNotice("");
   setHomeError("");
   show("matching");
   $("#matching-mode-label").textContent = selectedMode === "chat" ? "RANDOM CHAT" : "RANDOM CALL";
@@ -366,7 +372,6 @@ async function pollMatch() {
       showMatched(data);
       if (data.room?.mode === "call") await pollSignals();
     } else if (data.partnerLeft && selectedMode === "chat") {
-      if (!$("#chat").classList.contains("active")) show("chat");
       chatPartnerAvailable = false;
       $("#message-input").disabled = true;
       $("#chat-form button").disabled = true;
