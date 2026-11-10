@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
         device_id: deviceId,
         gender: profile.gender,
         initial_age: profile.initialAge,
-        registered_year: new Date().getUTCFullYear(),
+        registered_year: Number(new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", year: "numeric" }).format(new Date())),
         filter_active: filterActive,
         min_age: minAge,
         max_age: maxAge,
