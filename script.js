@@ -162,11 +162,11 @@ async function ensureAudio() {
   }
   const audioOnly = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
   if (!localStream) localStream = new MediaStream();
-  audioOnly.getAudioTracks().forEach((track) => {
+  for (const track of audioOnly.getAudioTracks()) {
     track.enabled = micOn;
     localStream.addTrack(track);
     if (audioSender) await audioSender.replaceTrack(track);
-  });
+  }
 }
 async function setupCall(data) {
   const roomId = data.room.id;
