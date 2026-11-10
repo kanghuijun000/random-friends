@@ -40,20 +40,73 @@ document.querySelectorAll('input[name="scope"]').forEach((el) => el.addEventList
 }));
 
 async function api(action, extra = {}) {
-  const response = await fetch(RF_FUNCTION_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "apikey": RF_PUBLISHABLE_KEY,
-      "Authorization": "Bearer " + RF_PUBLISHABLE_KEY
-    },
-    body: JSON.stringify({ action, sessionToken, ...extra })
-  });
-  let data = {};
-  try { data = await response.json(); } catch (_) {}
-  if (!response.ok) throw new Error(data.error || ("HTTP_" + response.status));
-  return data;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch(RF_FUNCTION_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": RF_PUBLISHABLE_KEY,
+        "Authorization": "Bearer " + RF_PUBLISHABLE_KEY
+      },
+      body: JSON.stringify({ action, sessionToken, ...extra }),
+      signal: controller.signal,
+      cache: "no-store"
+    });
+    let data = {};
+    try { data = await response.json(); } catch (_) {}
+    if (!response.ok) throw new Error(data.error || ("HTTP_" + response.status));
+    return data;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      const timeoutError = new Error("NETWORK_TIMEOUT");
+      timeoutError.code = "NETWORK_TIMEOUT";
+      throw timeoutError;
+    }
+    if (error instanceof TypeError) {
+      const networkError = new Error("NETWORK_UNAVAILABLE");
+      networkError.code = "NETWORK_UNAVAILABLE";
+      throw networkError;
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
+
+function isNetworkFailure(error) {
+  return error?.code === "NETWORK_TIMEOUT" ||
+    error?.code === "NETWORK_UNAVAILABLE" ||
+    error?.name === "AbortError" ||
+    error instanceof TypeError;
+}
+
+let handlingNetworkFailure = false;
+function returnHomeAfterNetworkFailure(message = "인터넷 연결 실패: 네트워크 상태를 확인한 뒤 다시 매칭해 주세요.") {
+  if (handlingNetworkFailure) return;
+  handlingNetworkFailure = true;
+
+  // End the server session in the background when the connection still permits it.
+  if (sessionToken) api("end").catch(() => {});
+  stopPolling();
+  cleanupCall();
+  sessionToken = "";
+  sessionId = "";
+  busy = false;
+  $("#message-input").value = "";
+  $("#message-input").disabled = true;
+  $("#chat-form button").disabled = true;
+  show("home");
+  setHomeError(message);
+  handlingNetworkFailure = false;
+}
+
+window.addEventListener("offline", () => {
+  if (screens.some((id) => id !== "home" && $("#" + id).classList.contains("active"))) {
+    returnHomeAfterNetworkFailure("인터넷 연결이 끊어졌습니다. 연결을 확인한 뒤 다시 매칭해 주세요.");
+  }
+});
 
 function startPolling() {
   stopPolling();
@@ -70,6 +123,10 @@ async function beginSearch() {
   const accessCode = $("#access-code").value.trim();
   if (!accessCode) {
     setHomeError("테스트 참여 코드를 입력해야 합니다.");
+    return;
+  }
+  if (!navigator.onLine) {
+    setHomeError("인터넷 연결 실패: 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
     return;
   }
   busy = true;
@@ -92,9 +149,13 @@ async function beginSearch() {
     startPolling();
   } catch (error) {
     show("home");
-    setHomeError(error.message === "ACCESS_DENIED"
-      ? "테스트 코드가 올바르지 않습니다."
-      : "서버 연결 실패: " + error.message + " (Edge Function 배포와 설정을 확인하세요.)");
+    if (isNetworkFailure(error)) {
+      setHomeError("인터넷 연결 실패: 네트워크가 끊겼거나 너무 느립니다. 연결을 확인한 뒤 다시 매칭해 주세요.");
+    } else {
+      setHomeError(error.message === "ACCESS_DENIED"
+        ? "테스트 코드가 올바르지 않습니다."
+        : "서버 연결 실패: " + error.message + " (Edge Function 배포와 설정을 확인하세요.)");
+    }
   } finally {
     busy = false;
   }
@@ -139,7 +200,11 @@ function showMatched(data) {
   } else if (data.room && data.room.mode === "call") {
     if (!$("#call").classList.contains("active")) show("call");
     setupCall(data).catch((error) => {
-      setCallStatus("통화 초기화 실패: " + error.message);
+      if (isNetworkFailure(error)) {
+        returnHomeAfterNetworkFailure();
+      } else {
+        setCallStatus("통화 초기화 실패: " + error.message);
+      }
     });
   }
 }
@@ -260,7 +325,11 @@ async function pollSignals() {
       }
     }
   } catch (error) {
-    setCallStatus("통화 신호 확인 실패: " + error.message);
+    if (isNetworkFailure(error)) {
+      returnHomeAfterNetworkFailure();
+    } else {
+      setCallStatus("통화 신호 확인 실패: " + error.message);
+    }
   } finally {
     signalBusy = false;
   }
@@ -278,15 +347,19 @@ async function pollMatch() {
       setMatchingStatus("매칭 대기 중");
     }
   } catch (error) {
-    stopPolling();
+    if (isNetworkFailure(error)) {
+      returnHomeAfterNetworkFailure();
+      return;
+    }
     if (error.message === "INVALID_SESSION") {
+      stopPolling();
       sessionToken = "";
       sessionId = "";
       cleanupCall();
       show("home");
       setHomeError("테스트 세션이 만료됐습니다. 다시 매칭해 주세요.");
-    } else {
-      setMatchingStatus("연결이 불안정합니다. 잠시 후 다시 시도해 주세요.");
+    } else if ($("#matching").classList.contains("active")) {
+      setMatchingStatus("서버 응답 오류. 잠시 후 다시 시도해 주세요.");
     }
   }
 }
@@ -303,7 +376,11 @@ async function sendMessage(event) {
     input.value = "";
     await pollMatch();
   } catch (error) {
-    alert("메시지를 보내지 못했습니다: " + error.message);
+    if (isNetworkFailure(error)) {
+      returnHomeAfterNetworkFailure();
+    } else {
+      alert("메시지를 보내지 못했습니다: " + error.message);
+    }
   } finally {
     input.disabled = false;
     $("#chat-form button").disabled = false;
@@ -325,7 +402,11 @@ async function nextMatch() {
     await api("next");
     startPolling();
   } catch (error) {
-    alert("다음 상대를 찾지 못했습니다: " + error.message);
+    if (isNetworkFailure(error)) {
+      returnHomeAfterNetworkFailure();
+    } else {
+      alert("다음 상대를 찾지 못했습니다: " + error.message);
+    }
   } finally {
     busy = false;
   }
