@@ -15,6 +15,8 @@ let videoSender = null;
 let cameraOn = false;
 let micOn = true;
 let currentRoomId = "";
+let lastCallRoomId = "";
+let pollBusy = false;
 let lastSignalId = 0;
 let signalBusy = false;
 let callSetupRoom = "";
@@ -237,6 +239,7 @@ function showMatched(data) {
     $("#chat-form button").disabled = false;
     renderMessages(data.messages || []);
   } else if (data.room && data.room.mode === "call") {
+    lastCallRoomId = String(data.room.id);
     if (!$("#call").classList.contains("active")) show("call");
     $("#call-room-status").textContent = "상대 매칭됨";
     $("#remote-state").textContent = "상대방의 영상 연결 중...";
@@ -247,7 +250,11 @@ function showMatched(data) {
       if (isNetworkFailure(error)) {
         returnHomeAfterNetworkFailure();
       } else {
-        setCallStatus("통화 초기화 실패: " + error.message);
+        const failedRoomId = String(data.room.id);
+        cleanupCall(true);
+        callSetupRoom = failedRoomId;
+        $("#next-call").disabled = false;
+        setCallStatus("통화 초기화 실패: " + error.message + " · 다음 상대를 선택해 다시 시도할 수 있습니다.");
       }
     });
   }
@@ -394,9 +401,11 @@ async function pollSignals() {
 }
 
 async function pollMatch() {
-  if (!sessionToken || busy) return;
+  if (!sessionToken || busy || pollBusy) return;
+  pollBusy = true;
   try {
-    const pollExtra = selectedMode === "chat" && currentChatRoomId ? { lastRoomId: currentChatRoomId } : {};
+    const lastRoomId = selectedMode === "chat" ? currentChatRoomId : lastCallRoomId;
+    const pollExtra = lastRoomId ? { lastRoomId } : {};
     const data = await api("poll", pollExtra);
     if (data.status === "matched") {
       setMatchingStatus("상대와 연결됨");
@@ -411,11 +420,16 @@ async function pollMatch() {
         setChatNotice("상대방이 퇴장했습니다. 새로운 상대를 찾고 있습니다.");
         lastChatNotice = noticeKey;
       }
-    } else if ($("#matching").classList.contains("active")) {
-      setMatchingStatus("매칭 대기 중");
     } else if (selectedMode === "call" && $("#call").classList.contains("active")) {
+      if (data.partnerLeft && (currentRoomId || peerConnection)) {
+        cleanupCall(true);
+        $("#next-call").disabled = true;
+        setCallStatus("상대방이 퇴장했습니다. 새로운 상대를 찾고 있습니다.");
+      }
       $("#remote-state").textContent = "상대방을 찾고 있는 중...";
       $("#call-room-status").textContent = "상대 찾는 중";
+    } else if ($("#matching").classList.contains("active")) {
+      setMatchingStatus("매칭 대기 중");
     }
   } catch (error) {
     if (isNetworkFailure(error)) {
@@ -432,6 +446,8 @@ async function pollMatch() {
     } else if ($("#matching").classList.contains("active")) {
       setMatchingStatus("서버 응답 오류. 잠시 후 다시 시도해 주세요.");
     }
+  } finally {
+    pollBusy = false;
   }
 }
 
@@ -463,6 +479,7 @@ async function sendMessage(event) {
 async function nextMatch() {
   if (!sessionToken || busy) return;
   busy = true;
+  lastCallRoomId = "";
   stopLocalMedia();
   cleanupCall();
   if (selectedMode === "call") {
@@ -508,6 +525,7 @@ async function endMatch() {
   sessionToken = "";
   sessionId = "";
   currentChatRoomId = "";
+  lastCallRoomId = "";
   chatPartnerAvailable = false;
   lastChatNotice = "";
   setChatNotice("");
