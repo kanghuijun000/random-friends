@@ -7,12 +7,12 @@
   <meta name="description" content="랜덤채팅과 랜덤통화를 선택하는 매칭 앱">
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=18">
+  <link rel="stylesheet" href="./style.css?v=19">
   <title>Random Friends</title>
 </head>
 <body>
   <main class="app">
-    <header class="topbar"><div class="brand-mark">R</div><span>RANDOM FRIENDS</span></header>
+    <header class="topbar"><div class="brand-mark">R</div><span>RANDOM FRIENDS</span><button type="button" id="open-settings" class="settings-open-btn">설정</button></header>
 
     <section id="home" class="screen active">
       <div class="hero">
@@ -60,6 +60,13 @@
       <button id="start-btn" class="primary-btn">매칭 시작 <span>→</span></button>
       <p id="home-error" class="error-text" role="status"></p>
       <p class="footnote">원하는 방식과 지역을 선택하고 새로운 상대를 만나보세요.</p>
+    </section>
+
+    <section id="settings" class="screen">
+      <div class="settings-head"><button type="button" id="close-settings" class="settings-back">← 홈</button><div class="eyebrow">YOUR SETTINGS</div><h1>설정</h1><p>계정 정보와 추가 보호 설정을 관리합니다.</p></div>
+      <div class="panel settings-panel"><h2>내 프로필</h2><div class="profile-info-row"><span>성별</span><b id="settings-gender">불러오는 중</b></div><div class="profile-info-row"><span>현재 나이</span><b id="settings-age">불러오는 중</b></div><div class="profile-info-row"><span>가입 날짜</span><b id="settings-joined">불러오는 중</b></div></div>
+      <div class="panel settings-panel"><h2>미성년자 보호</h2><label class="protection-toggle"><input type="checkbox" id="protect-under-20"><span><b>20세 이상 이용자 제외</b><small>활성화하면 매칭 필터와 지역 설정에 관계없이 20세 이상을 추가로 제외합니다.</small></span></label><p class="settings-note">이 설정은 추가 보호 기능입니다. 비활성화해도 서비스의 기본 안전 규칙은 유지됩니다.</p><p id="settings-status" class="settings-status" role="status"></p></div>
+      <button type="button" id="save-settings" class="primary-btn">설정 저장</button>
     </section>
 
     <section id="matching" class="screen">
@@ -136,6 +143,6 @@
     </div>
     <footer>RANDOM FRIENDS <span>·</span> FREE FIRST</footer>
   </main>
-  <script src="./script.js?v=18"></script>
+  <script src="./script.js?v=19"></script>
 </body>
 </html>
