@@ -171,11 +171,6 @@ async function requestCallPermissions() {
 }
 async function beginSearch() {
   if (busy) return;
-  const accessCode = $("#access-code").value.trim();
-  if (!accessCode) {
-    setHomeError("테스트 참여 코드를 입력해야 합니다.");
-    return;
-  }
   if (!navigator.onLine) {
     setHomeError("인터넷 연결 실패: 인터넷 연결을 확인한 뒤 다시 시도해 주세요.");
     return;
@@ -220,7 +215,6 @@ async function beginSearch() {
   try {
     const scope = $('input[name="scope"]:checked').value;
     const data = await api("start", {
-      accessCode,
       mode: selectedMode,
       scope,
       countryCode: scope === "country" ? $("#country").value : null
@@ -235,9 +229,7 @@ async function beginSearch() {
     if (isNetworkFailure(error)) {
       setHomeError("인터넷 연결 실패: 네트워크가 끊겼거나 너무 느립니다. 연결을 확인한 뒤 다시 매칭해 주세요.");
     } else {
-      setHomeError(error.message === "ACCESS_DENIED"
-        ? "테스트 코드가 올바르지 않습니다."
-        : "서버 연결 실패: " + error.message + " (Edge Function 배포와 설정을 확인하세요.)");
+      setHomeError("서버 연결 실패: " + error.message + " (Edge Function 배포와 설정을 확인하세요.)");
     }
   } finally {
     busy = false;
@@ -592,7 +584,6 @@ async function endMatch() {
   $("#message-input").value = "";
   $("#message-input").disabled = true;
   $("#chat-form button").disabled = true;
-  $("#access-code").value = "";
   $("#call-room-status").textContent = "상대 매칭됨";
   $("#mic-toggle").disabled = false;
   $("#camera-toggle").disabled = false;
