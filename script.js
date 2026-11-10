@@ -456,6 +456,17 @@ async function nextMatch() {
   busy = true;
   stopLocalMedia();
   cleanupCall();
+  if (selectedMode === "call") {
+    $("#remote-video").srcObject = null;
+    $("#remote-video").hidden = true;
+    $("#remote-avatar").hidden = false;
+    $("#remote-state").textContent = "상대방을 찾고 있는 중...";
+    $("#call-room-status").textContent = "상대 찾는 중";
+    $("#call-status").textContent = "새로운 상대를 찾고 있습니다.";
+    $("#mic-toggle").disabled = true;
+    $("#camera-toggle").disabled = true;
+    $("#next-call").disabled = true;
+  }
   chatPartnerAvailable = false;
   $("#message-input").disabled = true;
   $("#chat-form button").disabled = true;
