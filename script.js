@@ -125,6 +125,39 @@ function stopPolling() {
   pollTimer = null;
 }
 
+async function requestCallPermissions() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error("이 브라우저에서는 카메라와 마이크를 사용할 수 없습니다. 최신 브라우저와 HTTPS 연결을 확인해 주세요.");
+  }
+
+  // 한 번의 권한 요청으로 마이크와 카메라 권한을 함께 확인합니다.
+  const permissionStream = await navigator.mediaDevices.getUserMedia({
+    audio: true,
+    video: true
+  });
+
+  // 마이크는 기존 정책대로 기본 켜짐, 카메라는 권한만 확인하고 기본 꺼짐으로 둡니다.
+  const audioTracks = permissionStream.getAudioTracks();
+  const videoTracks = permissionStream.getVideoTracks();
+  videoTracks.forEach((track) => track.stop());
+
+  if (!audioTracks.length || !videoTracks.length) {
+    permissionStream.getTracks().forEach((track) => track.stop());
+    throw new Error("카메라와 마이크를 모두 사용할 수 있어야 랜덤통화를 시작할 수 있습니다.");
+  }
+
+  if (localStream) localStream.getTracks().forEach((track) => track.stop());
+  localStream = new MediaStream(audioTracks);
+  audioTracks.forEach((track) => { track.enabled = true; });
+  cameraOn = false;
+  micOn = true;
+  $( "#local-video" ).srcObject = null;
+  $( "#local-video" ).hidden = true;
+  $( "#camera-state" ).textContent = "카메라 꺼짐";
+  updateMicButton();
+  updateCameraButton();
+}
+
 async function beginSearch() {
   if (busy) return;
   const accessCode = $("#access-code").value.trim();
@@ -137,6 +170,21 @@ async function beginSearch() {
     return;
   }
   busy = true;
+
+  // 랜덤통화는 매칭 서버에 접속하기 전에 두 권한을 모두 허용받아야 합니다.
+  if (selectedMode === "call") {
+    try {
+      await requestCallPermissions();
+    } catch (error) {
+      stopLocalMedia();
+      setHomeError(error.name === "NotAllowedError" || error.name === "PermissionDeniedError"
+        ? "카메라와 마이크 권한을 모두 허용해야 랜덤통화를 사용할 수 있습니다. 권한을 거부했다면 브라우저 사이트 설정에서 허용해 주세요."
+        : "카메라와 마이크를 준비하지 못했습니다: " + error.message);
+      busy = false;
+      return;
+    }
+  }
+
   currentChatRoomId = "";
   chatPartnerAvailable = false;
   lastChatNotice = "";
@@ -171,6 +219,7 @@ async function beginSearch() {
     setMatchingStatus(data.status === "matched" ? "상대 찾음" : "매칭 대기 중");
     startPolling();
   } catch (error) {
+    if (selectedMode === "call") stopLocalMedia();
     show("home");
     if (isNetworkFailure(error)) {
       setHomeError("인터넷 연결 실패: 네트워크가 끊겼거나 너무 느립니다. 연결을 확인한 뒤 다시 매칭해 주세요.");
