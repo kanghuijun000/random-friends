@@ -91,6 +91,32 @@ Deno.serve(async (req) => {
         return json({ error: "INVALID_COUNTRY" }, 400);
       }
 
+      const deviceId = String(body.deviceId || "");
+      const profile = body.profile || {};
+      const filter = body.filter || {};
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(deviceId)) return json({ error: "INVALID_DEVICE_ID" }, 400);
+      if (!["male", "female"].includes(profile.gender) || !Number.isInteger(profile.initialAge) || profile.initialAge < 13 || profile.initialAge > 99) return json({ error: "INVALID_PROFILE" }, 400);
+      const filterActive = filter.active === true;
+      const minAge = Number.isInteger(filter.minAge) ? filter.minAge : 13;
+      const maxAge = Number.isInteger(filter.maxAge) ? filter.maxAge : 99;
+      const desiredGender = ["any", "male", "female"].includes(filter.gender) ? filter.gender : "any";
+      if (minAge < 13 || maxAge > 99 || minAge > maxAge) return json({ error: "INVALID_FILTER" }, 400);
+      const { error: profileInsertError } = await db.from("rf_profiles").upsert({
+        device_id: deviceId,
+        gender: profile.gender,
+        initial_age: profile.initialAge,
+        registered_year: new Date().getUTCFullYear(),
+        filter_active: filterActive,
+        min_age: minAge,
+        max_age: maxAge,
+        desired_gender: desiredGender,
+      }, { onConflict: "device_id", ignoreDuplicates: true });
+      if (profileInsertError) throw profileInsertError;
+      const { error: filterUpdateError } = await db.from("rf_profiles").update({
+        filter_active: filterActive, min_age: minAge, max_age: maxAge, desired_gender: desiredGender,
+      }).eq("device_id", deviceId);
+      if (filterUpdateError) throw filterUpdateError;
+
       const sessionId = crypto.randomUUID();
       const sessionToken = hex(crypto.getRandomValues(new Uint8Array(32)).buffer);
       const tokenHash = await hash(sessionToken);
@@ -99,6 +125,7 @@ Deno.serve(async (req) => {
         mode,
         scope,
         country_code: countryCode,
+        device_id: deviceId,
         token_hash: tokenHash,
         expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
       });
