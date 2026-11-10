@@ -130,34 +130,45 @@ async function requestCallPermissions() {
     throw new Error("이 브라우저에서는 카메라와 마이크를 사용할 수 없습니다. 최신 브라우저와 HTTPS 연결을 확인해 주세요.");
   }
 
-  // 한 번의 권한 요청으로 마이크와 카메라 권한을 함께 확인합니다.
-  const permissionStream = await navigator.mediaDevices.getUserMedia({
-    audio: true,
-    video: true
-  });
+  let audioStream = null;
+  let videoStream = null;
 
-  // 마이크는 기존 정책대로 기본 켜짐, 카메라는 권한만 확인하고 기본 꺼짐으로 둡니다.
-  const audioTracks = permissionStream.getAudioTracks();
-  const videoTracks = permissionStream.getVideoTracks();
-  videoTracks.forEach((track) => track.stop());
+  try {
+    // 모바일 Chrome에서 권한 요청이 누락되지 않도록 각각 별도로 요청합니다.
+    audioStream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: false
+    });
 
-  if (!audioTracks.length || !videoTracks.length) {
-    permissionStream.getTracks().forEach((track) => track.stop());
-    throw new Error("카메라와 마이크를 모두 사용할 수 있어야 랜덤통화를 시작할 수 있습니다.");
+    videoStream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: true
+    });
+
+    const audioTracks = audioStream.getAudioTracks();
+    const videoTracks = videoStream.getVideoTracks();
+    if (!audioTracks.length || !videoTracks.length) {
+      throw new Error("카메라와 마이크 권한을 모두 허용해야 랜덤통화를 시작할 수 있습니다.");
+    }
+
+    // 마이크는 기본 켜짐으로 보존하고, 카메라는 권한만 확인한 뒤 기본 꺼짐으로 둡니다.
+    videoTracks.forEach((track) => track.stop());
+    if (localStream) localStream.getTracks().forEach((track) => track.stop());
+    localStream = new MediaStream(audioTracks);
+    audioTracks.forEach((track) => { track.enabled = true; });
+    cameraOn = false;
+    micOn = true;
+    $("#local-video").srcObject = null;
+    $("#local-video").hidden = true;
+    $("#camera-state").textContent = "카메라 꺼짐";
+    updateMicButton();
+    updateCameraButton();
+  } catch (error) {
+    audioStream?.getTracks().forEach((track) => track.stop());
+    videoStream?.getTracks().forEach((track) => track.stop());
+    throw error;
   }
-
-  if (localStream) localStream.getTracks().forEach((track) => track.stop());
-  localStream = new MediaStream(audioTracks);
-  audioTracks.forEach((track) => { track.enabled = true; });
-  cameraOn = false;
-  micOn = true;
-  $( "#local-video" ).srcObject = null;
-  $( "#local-video" ).hidden = true;
-  $( "#camera-state" ).textContent = "카메라 꺼짐";
-  updateMicButton();
-  updateCameraButton();
 }
-
 async function beginSearch() {
   if (busy) return;
   const accessCode = $("#access-code").value.trim();
