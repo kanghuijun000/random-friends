@@ -439,5 +439,32 @@ window.addEventListener("pagehide", () => {
 });
 
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
-  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
+  let refreshingAfterUpdate = false;
+
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshingAfterUpdate) return;
+    refreshingAfterUpdate = true;
+    window.location.reload();
+  });
+
+  const checkForAppUpdate = async () => {
+    try {
+      const registration = await navigator.serviceWorker.register("./sw.js", {
+        updateViaCache: "none"
+      });
+      await registration.update();
+    } catch (_) {}
+  };
+
+  window.addEventListener("load", checkForAppUpdate, { once: true });
+
+  const checkRegisteredUpdate = () => {
+    if (document.visibilityState !== "visible") return;
+    navigator.serviceWorker.getRegistration()
+      .then((registration) => registration && registration.update())
+      .catch(() => {});
+  };
+
+  window.addEventListener("focus", checkRegisteredUpdate);
+  document.addEventListener("visibilitychange", checkRegisteredUpdate);
 }
