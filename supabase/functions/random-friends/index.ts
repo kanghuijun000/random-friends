@@ -123,6 +123,17 @@ Deno.serve(async (req) => {
     const session = await getSession();
 
     if (action === "poll") {
+      let previousRoomEnded = false;
+      const lastRoomId = String(body.lastRoomId || "");
+      if (lastRoomId) {
+        const { data: previousRoom, error: previousRoomError } = await db.from("rf_rooms")
+          .select("id,status,participant_a,participant_b")
+          .eq("id", lastRoomId)
+          .maybeSingle();
+        if (previousRoomError) throw previousRoomError;
+        previousRoomEnded = Boolean(previousRoom && previousRoom.status === "ended" &&
+          (previousRoom.participant_a === session.id || previousRoom.participant_b === session.id));
+      }
       let room = await activeRoom(session.id);
       if (!room) {
         const { data: queued, error } = await db.from("rf_queue")
@@ -131,7 +142,7 @@ Deno.serve(async (req) => {
         if (!queued) await enqueue(session);
         room = await activeRoom(session.id);
       }
-      if (!room) return json({ status: "waiting" });
+      if (!room) return json({ status: "waiting", partnerLeft: previousRoomEnded });
       const partnerId = room.participant_a === session.id ? room.participant_b : room.participant_a;
       const { data: messages, error } = await db.from("rf_messages")
         .select("id,sender_session_id,body,created_at")
@@ -142,6 +153,7 @@ Deno.serve(async (req) => {
         sessionId: session.id,
         room: { id: room.id, mode: room.mode },
         partnerId,
+        partnerLeft: previousRoomEnded,
         messages: messages || [],
       });
     }
