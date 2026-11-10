@@ -40,6 +40,61 @@ function modeChanged() {
   );
 }
 document.querySelectorAll('input[name="mode"]').forEach((el) => el.addEventListener("change", modeChanged));
+
+const FILTER_STORAGE_KEY = "random-friends-match-filter-v1";
+const defaultMatchFilter = { minAge: 13, maxAge: 99, gender: "any" };
+function readMatchFilter() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(FILTER_STORAGE_KEY) || "null");
+    if (!saved) return { ...defaultMatchFilter };
+    return {
+      minAge: Number.isInteger(saved.minAge) ? saved.minAge : 13,
+      maxAge: Number.isInteger(saved.maxAge) ? saved.maxAge : 99,
+      gender: ["any", "male", "female"].includes(saved.gender) ? saved.gender : "any"
+    };
+  } catch (_) { return { ...defaultMatchFilter }; }
+}
+let matchFilter = readMatchFilter();
+const filterModal = $("#filter-modal");
+function populateFilterForm() {
+  $("#filter-min-age").value = matchFilter.minAge;
+  $("#filter-max-age").value = matchFilter.maxAge;
+  $("#filter-gender").value = matchFilter.gender;
+  $("#filter-error").textContent = "";
+}
+function openFilter() {
+  populateFilterForm();
+  filterModal.hidden = false;
+  document.body.style.overflow = "hidden";
+}
+function closeFilter() {
+  filterModal.hidden = true;
+  document.body.style.overflow = "";
+}
+$("#open-filter").addEventListener("click", openFilter);
+$("#close-filter").addEventListener("click", closeFilter);
+filterModal.querySelector("[data-close-filter]").addEventListener("click", closeFilter);
+$("#reset-filter").addEventListener("click", () => {
+  matchFilter = { ...defaultMatchFilter };
+  populateFilterForm();
+});
+$("#apply-filter").addEventListener("click", () => {
+  const minAge = Number($("#filter-min-age").value);
+  const maxAge = Number($("#filter-max-age").value);
+  const gender = $("#filter-gender").value;
+  if (!Number.isInteger(minAge) || !Number.isInteger(maxAge) || minAge < 13 || maxAge > 99 || minAge > maxAge) {
+    $("#filter-error").textContent = "연령은 13~99세로 입력하고, 최소 연령은 최대 연령보다 클 수 없습니다.";
+    return;
+  }
+  matchFilter = { minAge, maxAge, gender };
+  localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(matchFilter));
+  closeFilter();
+  setHomeError("필터 설정이 이 기기에 저장되었습니다. 실제 매칭 적용은 서버 조건 연결 후 활성화됩니다.");
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !filterModal.hidden) closeFilter();
+});
+
 document.querySelectorAll('input[name="scope"]').forEach((el) => el.addEventListener("change", () => {
   $("#country-wrap").hidden = $('input[name="scope"]:checked').value !== "country";
 }));
