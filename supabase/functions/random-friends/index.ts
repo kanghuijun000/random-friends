@@ -19,13 +19,6 @@ async function hash(value: string) {
   return hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
 }
 
-function constantTimeEqual(a: string, b: string) {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "METHOD_NOT_ALLOWED" }, 405);
@@ -44,8 +37,7 @@ Deno.serve(async (req) => {
         // Fall through to the configuration check below.
       }
     }
-    const accessCode = Deno.env.get("RF_TEST_ACCESS_CODE");
-    if (!url || !serviceKey || !accessCode) return json({ error: "SERVER_NOT_CONFIGURED" }, 503);
+    if (!url || !serviceKey) return json({ error: "SERVER_NOT_CONFIGURED" }, 503);
 
     const db = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const body = await req.json();
@@ -92,8 +84,6 @@ Deno.serve(async (req) => {
     }
 
     if (action === "start") {
-      const supplied = String(body.accessCode || "");
-      if (!constantTimeEqual(supplied, accessCode)) return json({ error: "ACCESS_DENIED" }, 403);
       const mode = body.mode === "call" ? "call" : "chat";
       const scope = body.scope === "country" ? "country" : "world";
       const countryCode = scope === "country" ? String(body.countryCode || "").toUpperCase() : null;
