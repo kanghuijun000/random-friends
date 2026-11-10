@@ -21,6 +21,9 @@ let callSetupRoom = "";
 let offerStarted = false;
 let pendingCandidates = [];
 let busy = false;
+let currentChatRoomId = "";
+let chatPartnerAvailable = false;
+let lastChatNotice = "";
 
 function show(name) {
   screens.forEach((id) => $("#" + id).classList.toggle("active", id === name));
@@ -161,6 +164,12 @@ async function beginSearch() {
   }
 }
 
+function setChatNotice(message) {
+  const notice = $("#chat-status");
+  notice.textContent = message;
+  notice.hidden = !message;
+}
+
 function renderMessages(messages) {
   const box = $("#messages");
   const wasNearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 70;
@@ -193,7 +202,19 @@ function renderMessages(messages) {
 
 function showMatched(data) {
   if (data.room && data.room.mode === "chat") {
+    const nextRoomId = String(data.room.id);
+    const changedRoom = Boolean(currentChatRoomId && currentChatRoomId !== nextRoomId);
     if (!$("#chat").classList.contains("active")) show("chat");
+    if (changedRoom) {
+      $("#messages").replaceChildren();
+      setChatNotice("상대방이 퇴장했습니다. 새로운 상대방과 연결되었습니다.");
+      lastChatNotice = "new:" + nextRoomId;
+    } else if (data.partnerLeft && lastChatNotice !== "left:" + currentChatRoomId) {
+      setChatNotice("상대방이 퇴장했습니다. 새로운 상대를 찾고 있습니다.");
+      lastChatNotice = "left:" + currentChatRoomId;
+    }
+    currentChatRoomId = nextRoomId;
+    chatPartnerAvailable = true;
     $("#message-input").disabled = false;
     $("#chat-form button").disabled = false;
     renderMessages(data.messages || []);
@@ -338,11 +359,22 @@ async function pollSignals() {
 async function pollMatch() {
   if (!sessionToken || busy) return;
   try {
-    const data = await api("poll");
+    const pollExtra = selectedMode === "chat" && currentChatRoomId ? { lastRoomId: currentChatRoomId } : {};
+    const data = await api("poll", pollExtra);
     if (data.status === "matched") {
       setMatchingStatus("상대와 연결됨");
       showMatched(data);
       if (data.room?.mode === "call") await pollSignals();
+    } else if (data.partnerLeft && selectedMode === "chat") {
+      if (!$("#chat").classList.contains("active")) show("chat");
+      chatPartnerAvailable = false;
+      $("#message-input").disabled = true;
+      $("#chat-form button").disabled = true;
+      const noticeKey = "left:" + currentChatRoomId;
+      if (lastChatNotice !== noticeKey) {
+        setChatNotice("상대방이 퇴장했습니다. 새로운 상대를 찾고 있습니다.");
+        lastChatNotice = noticeKey;
+      }
     } else if ($("#matching").classList.contains("active")) {
       setMatchingStatus("매칭 대기 중");
     }
@@ -369,6 +401,7 @@ async function sendMessage(event) {
   const input = $("#message-input");
   const message = input.value.trim();
   if (!message || !sessionToken) return;
+  if (!chatPartnerAvailable) return;
   input.disabled = true;
   $("#chat-form button").disabled = true;
   try {
@@ -382,9 +415,9 @@ async function sendMessage(event) {
       alert("메시지를 보내지 못했습니다: " + error.message);
     }
   } finally {
-    input.disabled = false;
-    $("#chat-form button").disabled = false;
-    input.focus();
+    input.disabled = !chatPartnerAvailable;
+    $("#chat-form button").disabled = !chatPartnerAvailable;
+    if (chatPartnerAvailable) input.focus();
   }
 }
 
@@ -393,6 +426,10 @@ async function nextMatch() {
   busy = true;
   stopLocalMedia();
   cleanupCall();
+  chatPartnerAvailable = false;
+  $("#message-input").disabled = true;
+  $("#chat-form button").disabled = true;
+  setChatNotice("새로운 상대를 찾고 있습니다.");
   $("#messages").replaceChildren();
   show("matching");
   $("#matching-mode-label").textContent = selectedMode === "chat" ? "RANDOM CHAT" : "RANDOM CALL";
@@ -420,6 +457,10 @@ async function endMatch() {
   }
   sessionToken = "";
   sessionId = "";
+  currentChatRoomId = "";
+  chatPartnerAvailable = false;
+  lastChatNotice = "";
+  setChatNotice("");
   $("#message-input").value = "";
   $("#message-input").disabled = true;
   $("#chat-form button").disabled = true;
