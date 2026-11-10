@@ -7,7 +7,7 @@
   <meta name="description" content="랜덤채팅과 랜덤통화를 선택하는 매칭 앱">
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=7">
+  <link rel="stylesheet" href="./style.css?v=8">
   <title>Random Friends</title>
 </head>
 <body>
@@ -97,10 +97,10 @@
     </section>
 
     <section id="call" class="screen">
-      <header class="room-header"><div><div class="eyebrow">RANDOM CALL</div><b>랜덤통화</b></div><span class="status-pill"><i></i> 상대 매칭됨</span></header>
+      <header class="room-header"><div><div class="eyebrow">RANDOM CALL</div><b>랜덤통화</b></div><span class="status-pill"><i></i> <span id="call-room-status">상대 매칭됨</span></span></header>
       <div class="call-notice">마이크는 권한을 허용하면 기본 켜짐, 카메라는 기본 꺼짐입니다. 연결은 네트워크 환경에 따라 실패할 수 있습니다.</div>
       <div class="video-stage">
-        <div class="video-tile remote"><video id="remote-video" autoplay playsinline hidden></video><div class="avatar" id="remote-avatar">?</div><b>상대방</b><small>통화 연결 대기</small></div>
+        <div class="video-tile remote"><video id="remote-video" autoplay playsinline hidden></video><div class="avatar" id="remote-avatar">?</div><b>상대방</b><small id="remote-state">상대방을 찾고 있는 중...</small></div>
         <div class="video-tile local" id="local-tile"><video id="local-video" autoplay muted playsinline hidden></video><div class="avatar">나</div><b>나</b><small id="camera-state">카메라 꺼짐</small></div>
       </div>
       <div id="call-status" class="call-notice" role="status">통화 연결 준비 중</div>
@@ -116,6 +116,6 @@
     </section>
     <footer>RANDOM FRIENDS <span>·</span> FREE FIRST</footer>
   </main>
-  <script src="./script.js?v=7"></script>
+  <script src="./script.js?v=8"></script>
 </body>
 </html>
