@@ -84,6 +84,16 @@ Deno.serve(async (req) => {
       return data;
     }
 
+    if (action === "get-profile") {
+      const deviceId = String(body.deviceId || "");
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(deviceId)) return json({ error: "INVALID_DEVICE_ID" }, 400);
+      const { data, error } = await db.from("rf_profiles").select("gender,initial_age,registered_year,created_at").eq("device_id", deviceId).maybeSingle();
+      if (error) throw error;
+      if (!data) return json({ profile: null });
+      const currentYear = Number(new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", year: "numeric" }).format(new Date()));
+      return json({ profile: { gender: data.gender, currentAge: data.initial_age + currentYear - data.registered_year, createdAt: data.created_at } });
+    }
+
     if (action === "start") {
       const mode = body.mode === "call" ? "call" : "chat";
       const scope = body.scope === "country" ? "country" : "world";
@@ -95,6 +105,7 @@ Deno.serve(async (req) => {
       const deviceId = String(body.deviceId || "");
       const profile = body.profile || {};
       const filter = body.filter || {};
+      const protectUnder20 = body.protectUnder20 === true;
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(deviceId)) return json({ error: "INVALID_DEVICE_ID" }, 400);
       if (!["male", "female"].includes(profile.gender) || !Number.isInteger(profile.initialAge) || profile.initialAge < 13 || profile.initialAge > 99) return json({ error: "INVALID_PROFILE" }, 400);
       const filterActive = filter.active === true;
@@ -114,7 +125,7 @@ Deno.serve(async (req) => {
       }, { onConflict: "device_id", ignoreDuplicates: true });
       if (profileInsertError) throw profileInsertError;
       const { error: filterUpdateError } = await db.from("rf_profiles").update({
-        filter_active: filterActive, min_age: minAge, max_age: maxAge, desired_gender: desiredGender,
+        filter_active: filterActive, min_age: minAge, max_age: maxAge, desired_gender: desiredGender, exclude_20_plus: protectUnder20,
       }).eq("device_id", deviceId);
       if (filterUpdateError) throw filterUpdateError;
 
