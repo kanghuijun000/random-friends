@@ -10,6 +10,8 @@ let pollTimer = null;
 let localStream = null;
 let remoteStream = null;
 let peerConnection = null;
+let audioSender = null;
+let videoSender = null;
 let cameraOn = false;
 let micOn = true;
 let currentRoomId = "";
@@ -168,7 +170,7 @@ async function ensureAudio() {
 }
 async function setupCall(data) {
   const roomId = data.room.id;
-  if (callSetupRoom === roomId && peerConnection) return;
+  if (callSetupRoom === roomId) return;
   cleanupCall();
   callSetupRoom = roomId;
   currentRoomId = roomId;
@@ -191,15 +193,19 @@ async function setupCall(data) {
   peerConnection = new RTCPeerConnection({
     iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
   });
-  if (localStream) {
-    localStream.getTracks().forEach((track) => peerConnection.addTrack(track, localStream));
-  }
+  const audioTransceiver = peerConnection.addTransceiver("audio", { direction: "sendrecv" });
+  const videoTransceiver = peerConnection.addTransceiver("video", { direction: "sendrecv" });
+  audioSender = audioTransceiver.sender;
+  videoSender = videoTransceiver.sender;
+  const audioTrack = localStream?.getAudioTracks()[0] || null;
+  if (audioTrack) await audioSender.replaceTrack(audioTrack);
   peerConnection.ontrack = (event) => {
-    event.streams[0]?.getTracks().forEach((track) => {
-      if (!remoteStream.getTracks().some((existing) => existing.id === track.id)) remoteStream.addTrack(track);
-    });
+    if (!remoteStream.getTracks().some((track) => track.id === event.track.id)) {
+      remoteStream.addTrack(event.track);
+    }
     $("#remote-video").hidden = false;
     $("#remote-avatar").hidden = true;
+    $("#remote-video").play().catch(() => {});
   };
   peerConnection.onicecandidate = (event) => {
     if (event.candidate && currentRoomId === roomId) {
@@ -361,6 +367,8 @@ function cleanupCall() {
     peerConnection.close();
   }
   peerConnection = null;
+  audioSender = null;
+  videoSender = null;
   if (remoteStream) remoteStream.getTracks().forEach((track) => track.stop());
   remoteStream = null;
   $("#remote-video").srcObject = null;
@@ -385,8 +393,7 @@ async function toggleCamera() {
   if (cameraOn) {
     const tracks = localStream?.getVideoTracks() || [];
     for (const track of tracks) {
-      const sender = peerConnection?.getSenders().find((item) => item.track?.id === track.id);
-      if (sender) await sender.replaceTrack(null);
+      if (videoSender) await videoSender.replaceTrack(null);
       track.stop();
       localStream.removeTrack(track);
     }
@@ -402,7 +409,7 @@ async function toggleCamera() {
     if (!localStream) localStream = new MediaStream();
     for (const track of videoStream.getVideoTracks()) {
       localStream.addTrack(track);
-      if (peerConnection) peerConnection.addTrack(track, localStream);
+      if (videoSender) await videoSender.replaceTrack(track);
     }
     $("#local-video").srcObject = videoStream;
     $("#local-video").hidden = false;
