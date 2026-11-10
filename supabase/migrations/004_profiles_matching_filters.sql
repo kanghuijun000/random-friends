@@ -53,7 +53,7 @@ begin
   where s.id = p_session_id;
   if not found then return; end if;
 
-  own_age := own_profile.initial_age + extract(year from current_date)::integer - own_profile.registered_year;
+  own_age := own_profile.initial_age + extract(year from (now() at time zone 'Asia/Seoul'))::integer - own_profile.registered_year;
 
   select q.session_id into partner_id
   from public.rf_queue q
@@ -66,12 +66,12 @@ begin
     and (own_queue.excluded_session_id is null or q.session_id <> own_queue.excluded_session_id)
     and (q.excluded_session_id is null or q.excluded_session_id <> p_session_id)
     and (
-      (own_age < 18 and (pp.initial_age + extract(year from current_date)::integer - pp.registered_year) < 18)
+      (own_age < 18 and (pp.initial_age + extract(year from (now() at time zone 'Asia/Seoul'))::integer - pp.registered_year) < 18)
       or
-      (own_age >= 18 and (pp.initial_age + extract(year from current_date)::integer - pp.registered_year) >= 18)
+      (own_age >= 18 and (pp.initial_age + extract(year from (now() at time zone 'Asia/Seoul'))::integer - pp.registered_year) >= 18)
     )
     and (not own_profile.filter_active or (
-      pp.initial_age + extract(year from current_date)::integer - pp.registered_year
+      pp.initial_age + extract(year from (now() at time zone 'Asia/Seoul'))::integer - pp.registered_year
         between own_profile.min_age and own_profile.max_age
       and (own_profile.desired_gender = 'any' or own_profile.desired_gender = pp.gender)
     ))
