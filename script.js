@@ -1,5 +1,5 @@
 const $ = (s) => document.querySelector(s);
-const screens = ["home", "matching", "chat", "call"];
+const screens = ["home", "settings", "matching", "chat", "call"];
 const RF_FUNCTION_URL = "https://nbvfxlaeattbqsablsrd.supabase.co/functions/v1/random-friends";
 const RF_PUBLISHABLE_KEY = "sb_publishable_UVRwP4xzxz7p7aK9nKZOFw_y39XLVlr";
 
@@ -44,6 +44,8 @@ document.querySelectorAll('input[name="mode"]').forEach((el) => el.addEventListe
 const DEVICE_ID_KEY = "random-friends-device-id-v1";
 const PROFILE_STORAGE_KEY = "random-friends-profile-v1";
 const FILTER_STORAGE_KEY = "random-friends-match-filter-v2";
+const PROTECT_STORAGE_KEY = "random-friends-protect-under-20-v1";
+let protectUnder20 = localStorage.getItem(PROTECT_STORAGE_KEY) === "true";
 function makeDeviceId() {
   let id = localStorage.getItem(DEVICE_ID_KEY);
   if (!id) {
@@ -327,7 +329,8 @@ async function beginSearch() {
       countryCode: scope === "country" ? $("#country").value : null,
       deviceId,
       profile: userProfile,
-      filter: matchFilter
+      filter: matchFilter,
+      protectUnder20
     });
     sessionToken = data.sessionToken;
     sessionId = data.sessionId;
@@ -345,6 +348,41 @@ async function beginSearch() {
     busy = false;
   }
 }
+
+
+function openSettings() {
+  if (!userProfile) { showProfileSetup(); return; }
+  $("#protect-under-20").checked = protectUnder20;
+  $("#settings-status").textContent = "";
+  show("settings");
+  loadSettingsProfile();
+}
+async function loadSettingsProfile() {
+  $("#settings-gender").textContent = "불러오는 중";
+  $("#settings-age").textContent = "불러오는 중";
+  $("#settings-joined").textContent = "불러오는 중";
+  try {
+    const data = await api("get-profile", { deviceId });
+    const profile = data.profile;
+    if (!profile) throw new Error("PROFILE_NOT_FOUND");
+    $("#settings-gender").textContent = profile.gender === "female" ? "여성" : "남성";
+    $("#settings-age").textContent = profile.currentAge + "세";
+    const joined = new Date(profile.createdAt);
+    $("#settings-joined").textContent = Number.isNaN(joined.getTime()) ? "확인 불가" :
+      new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "long", day: "numeric" }).format(joined);
+  } catch (_) {
+    $("#settings-gender").textContent = userProfile.gender === "female" ? "여성" : "남성";
+    $("#settings-age").textContent = "첫 매칭 후 표시";
+    $("#settings-joined").textContent = "첫 매칭 후 표시";
+  }
+}
+$("#open-settings").addEventListener("click", openSettings);
+$("#close-settings").addEventListener("click", () => show("home"));
+$("#save-settings").addEventListener("click", () => {
+  protectUnder20 = $("#protect-under-20").checked;
+  localStorage.setItem(PROTECT_STORAGE_KEY, String(protectUnder20));
+  $("#settings-status").textContent = "설정을 저장했습니다. 다음 매칭부터 적용됩니다.";
+});
 
 function setChatNotice(message) {
   const notice = $("#chat-status");
