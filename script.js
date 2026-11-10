@@ -790,6 +790,19 @@ $("#camera-toggle").addEventListener("click", toggleCamera);
 updateMicButton();
 updateCameraButton();
 window.addEventListener("pagehide", () => {
+  // Best-effort server cleanup prevents a closed tab from remaining in the queue.
+  if (sessionToken) {
+    fetch(RF_FUNCTION_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": RF_PUBLISHABLE_KEY,
+        "Authorization": "Bearer " + RF_PUBLISHABLE_KEY
+      },
+      body: JSON.stringify({ action: "end", sessionToken }),
+      keepalive: true
+    }).catch(() => {});
+  }
   stopPolling();
   cleanupCall();
 });
