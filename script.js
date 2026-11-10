@@ -140,7 +140,18 @@ async function beginSearch() {
   lastChatNotice = "";
   setChatNotice("");
   setHomeError("");
-  show("matching");
+  show(selectedMode === "call" ? "call" : "matching");
+  if (selectedMode === "call") {
+    $("#remote-video").srcObject = null;
+    $("#remote-video").hidden = true;
+    $("#remote-avatar").hidden = false;
+    $("#remote-state").textContent = "상대방을 찾고 있는 중...";
+    $("#call-room-status").textContent = "상대 찾는 중";
+    $("#call-status").textContent = "새로운 상대를 찾고 있습니다.";
+    $("#mic-toggle").disabled = true;
+    $("#camera-toggle").disabled = true;
+    $("#next-call").disabled = true;
+  }
   $("#matching-mode-label").textContent = selectedMode === "chat" ? "RANDOM CHAT" : "RANDOM CALL";
   $("#matching-description").textContent = "서버에 연결하고 상대를 찾고 있습니다.";
   setMatchingStatus("서버 연결 중");
@@ -226,6 +237,11 @@ function showMatched(data) {
     renderMessages(data.messages || []);
   } else if (data.room && data.room.mode === "call") {
     if (!$("#call").classList.contains("active")) show("call");
+    $("#call-room-status").textContent = "상대 매칭됨";
+    $("#remote-state").textContent = "상대방의 영상 연결 중...";
+    $("#mic-toggle").disabled = false;
+    $("#camera-toggle").disabled = false;
+    $("#next-call").disabled = false;
     setupCall(data).catch((error) => {
       if (isNetworkFailure(error)) {
         returnHomeAfterNetworkFailure();
@@ -271,6 +287,8 @@ async function setupCall(data) {
   offerStarted = false;
   remoteStream = new MediaStream();
   $("#remote-video").srcObject = remoteStream;
+  $("#remote-avatar").hidden = false;
+  $("#remote-state").textContent = "상대방의 영상 연결 중...";
   setCallStatus("마이크 권한 확인 중…");
   try {
     await ensureAudio();
@@ -295,9 +313,13 @@ async function setupCall(data) {
     if (!remoteStream.getTracks().some((track) => track.id === event.track.id)) {
       remoteStream.addTrack(event.track);
     }
-    $("#remote-video").hidden = false;
-    $("#remote-avatar").hidden = true;
-    $("#remote-video").play().catch(() => {});
+    if (event.track.kind === "video") {
+      $("#remote-video").hidden = false;
+      $("#remote-avatar").hidden = true;
+      $("#remote-video").play().catch(() => {});
+    } else {
+      $("#remote-state").textContent = "음성 연결됨 · 상대방 영상 대기 중";
+    }
   };
   peerConnection.onicecandidate = (event) => {
     if (event.candidate && currentRoomId === roomId) {
@@ -382,6 +404,9 @@ async function pollMatch() {
       }
     } else if ($("#matching").classList.contains("active")) {
       setMatchingStatus("매칭 대기 중");
+    } else if (selectedMode === "call" && $("#call").classList.contains("active")) {
+      $("#remote-state").textContent = "상대방을 찾고 있는 중...";
+      $("#call-room-status").textContent = "상대 찾는 중";
     }
   } catch (error) {
     if (isNetworkFailure(error)) {
@@ -470,6 +495,10 @@ async function endMatch() {
   $("#message-input").disabled = true;
   $("#chat-form button").disabled = true;
   $("#access-code").value = "";
+  $("#call-room-status").textContent = "상대 매칭됨";
+  $("#mic-toggle").disabled = false;
+  $("#camera-toggle").disabled = false;
+  $("#next-call").disabled = false;
   show("home");
 }
 function stopLocalMedia() {
@@ -501,6 +530,7 @@ function cleanupCall() {
   $("#remote-video").srcObject = null;
   $("#remote-video").hidden = true;
   $("#remote-avatar").hidden = false;
+  if ($("#remote-state")) $("#remote-state").textContent = "상대방을 찾고 있는 중...";
   stopLocalMedia();
 }
 async function toggleMic() {
