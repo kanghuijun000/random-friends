@@ -70,7 +70,8 @@ Deno.serve(async (req) => {
         queued_at: new Date().toISOString(),
       });
       if (error) throw error;
-      await db.rpc("rf_match_session", { p_session_id: session.id });
+      const { error: matchError } = await db.rpc("rf_match_session", { p_session_id: session.id });
+      if (matchError) throw matchError;
     }
 
     async function activeRoom(sessionId: string) {
