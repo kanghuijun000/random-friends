@@ -22,7 +22,7 @@
       </div>
 
       <div class="panel">
-        <h2>매칭 방식</h2>
+        <div class="panel-heading"><h2>매칭 방식</h2><button type="button" id="open-filter" class="filter-open-btn">⚙ 필터</button></div>
         <div class="mode-options">
           <label class="mode-card selected" for="mode-chat">
             <input id="mode-chat" type="radio" name="mode" value="chat" checked>
@@ -108,6 +108,22 @@
       </div>
       <p class="footnote">카메라를 켜면 영상이 상대에게 전송됩니다. 통화 종료 시 마이크·카메라 연결을 해제합니다.</p>
     </section>
+
+    <div id="filter-modal" class="filter-modal" hidden>
+      <div class="filter-backdrop" data-close-filter></div>
+      <section class="filter-dialog" role="dialog" aria-modal="true" aria-labelledby="filter-title">
+        <div class="filter-dialog-head">
+          <div><div class="eyebrow">MATCH PREFERENCES</div><h2 id="filter-title">매칭 필터</h2></div>
+          <button type="button" id="close-filter" class="filter-close" aria-label="닫기">×</button>
+        </div>
+        <p class="filter-description">원하는 상대의 나이와 성별 조건을 설정하세요.</p>
+        <div class="filter-field"><label for="filter-min-age">최소 연령</label><div class="filter-number"><input id="filter-min-age" type="number" min="13" max="99" value="13"><span>세</span></div></div>
+        <div class="filter-field"><label for="filter-max-age">최대 연령</label><div class="filter-number"><input id="filter-max-age" type="number" min="13" max="99" value="99"><span>세</span></div></div>
+        <div class="filter-field"><label for="filter-gender">상대 성별</label><select id="filter-gender"><option value="any">성별 무관</option><option value="male">남성</option><option value="female">여성</option></select></div>
+        <p id="filter-error" class="error-text" role="alert"></p>
+        <div class="filter-actions"><button type="button" id="reset-filter" class="filter-reset-btn">초기화</button><button type="button" id="apply-filter" class="primary-btn">적용하기</button></div>
+      </section>
+    </div>
     <footer>RANDOM FRIENDS <span>·</span> FREE FIRST</footer>
   </main>
   <script src="./script.js?v=13"></script>
