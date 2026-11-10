@@ -191,6 +191,42 @@ Deno.serve(async (req) => {
       return json({ status: "ended" });
     }
 
+    if (action === "signal-send") {
+      const room = await activeRoom(session.id);
+      if (!room || room.mode !== "call") return json({ error: "NO_ACTIVE_CALL" }, 409);
+      const kind = String(body.kind || "");
+      if (!["offer", "answer", "ice-candidate"].includes(kind)) {
+        return json({ error: "INVALID_SIGNAL_KIND" }, 400);
+      }
+      const payload = body.payload;
+      if (!payload || typeof payload !== "object" || JSON.stringify(payload).length > 20000) {
+        return json({ error: "INVALID_SIGNAL_PAYLOAD" }, 400);
+      }
+      const { error } = await db.from("rf_signals").insert({
+        room_id: room.id,
+        sender_session_id: session.id,
+        kind,
+        payload,
+      });
+      if (error) throw error;
+      return json({ status: "sent" });
+    }
+
+    if (action === "signal-poll") {
+      const room = await activeRoom(session.id);
+      if (!room || room.mode !== "call") return json({ error: "NO_ACTIVE_CALL" }, 409);
+      const afterId = Math.max(0, Number(body.afterId) || 0);
+      const { data: signals, error } = await db.from("rf_signals")
+        .select("id,sender_session_id,kind,payload,created_at")
+        .eq("room_id", room.id)
+        .neq("sender_session_id", session.id)
+        .gt("id", afterId)
+        .order("id", { ascending: true })
+        .limit(100);
+      if (error) throw error;
+      return json({ signals: signals || [] });
+    }
+
     return json({ error: "UNKNOWN_ACTION" }, 400);
   } catch (error) {
     const message = error instanceof Error ? error.message : "INTERNAL_ERROR";
