@@ -919,3 +919,71 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") {
   window.addEventListener("focus", checkRegisteredUpdate);
   document.addEventListener("visibilitychange", checkRegisteredUpdate);
 }
+// ==========================================
+// [설정 1] 앱이 켜질 때 Supabase에서 체크박스 상태를 불러오는 함수
+// ==========================================
+async function loadExclude20PlusSetting(deviceId) {
+  try {
+    const { data, error } = await supabase
+      .from('rf_profiles')
+      .select('exclude_20_plus')
+      .eq('device_id', deviceId)
+      .single();
+
+    if (error) {
+      console.error('설정 불러오기 실패:', error.message);
+      return;
+    }
+
+    // HTML에 있는 체크박스 요소 선택 (id가 'exclude20PlusCheckbox'라고 가정)
+    const checkbox = document.getElementById('exclude20PlusCheckbox');
+    if (checkbox && data) {
+      checkbox.checked = data.exclude_20_plus;
+    }
+  } catch (err) {
+    console.error('설정 로드 중 예외 발생:', err);
+  }
+}
+
+// ==========================================
+// [설정 2] 체크박스를 켜거나 껐을 때 Supabase DB를 업데이트하는 함수
+// ==========================================
+async function updateExclude20PlusSetting(deviceId, isChecked) {
+  try {
+    const { error } = await supabase
+      .from('rf_profiles')
+      .update({ 
+        exclude_20_plus: isChecked,
+        updated_at: new Date().toISOString()
+      })
+      .eq('device_id', deviceId);
+
+    if (error) {
+      console.error('설정 저장 실패:', error.message);
+    } else {
+      console.log('설정 저장 성공:', isChecked);
+    }
+  } catch (err) {
+    console.error('설정 저장 중 예외 발생:', err);
+  }
+}
+
+// ==========================================
+// [설정 3] 체크박스 클릭 이벤트 자동 연결 (HTML과 연동)
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+  // 사용자의 고유 디바이스 ID를 가져오는 방식에 맞게 수정하세요 (예: localStorage 등)
+  const currentDeviceId = localStorage.getItem('device_id') || '내_디바이스_ID_값';
+
+  // 1. 페이지가 켜지면 값 불러와서 체크박스에 반영
+  loadExclude20PlusSetting(currentDeviceId);
+
+  // 2. 체크박스 상태가 바뀔 때마다 DB에 즉시 업데이트
+  const checkbox = document.getElementById('exclude20PlusCheckbox');
+  if (checkbox) {
+    checkbox.addEventListener('change', (e) => {
+      const isChecked = e.target.checked;
+      updateExclude20PlusSetting(currentDeviceId, isChecked);
+    });
+  }
+});
