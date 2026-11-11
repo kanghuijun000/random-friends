@@ -1,9 +1,9 @@
-const CACHE = "random-friends-v26";
+const CACHE = "random-friends-v27";
 const FILES = [
   "./",
   "./index.html",
   "./style.css?v=22",
-  "./script.js?v=25",
+  "./script.js?v=26",
   "./manifest.json",
   "./icon.svg"
 ];
