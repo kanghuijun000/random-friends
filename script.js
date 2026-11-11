@@ -918,3 +918,32 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") {
 
   window.addEventListener("focus", checkRegisteredUpdate);
 }
+
+
+// 미성년자 추가 보호 설정을 로컬에 불러오고 저장합니다.
+// 매칭 시작 시 exclude20Plus 값으로 서버에 전달됩니다.
+function loadExclude20PlusSetting(currentDeviceId) {
+  const checkbox = document.getElementById("protection-toggle");
+  if (!checkbox) return;
+  protectionEnabled = localStorage.getItem(PROTECTION_STORAGE_KEY) !== "false";
+  checkbox.checked = protectionEnabled;
+}
+
+function updateExclude20PlusSetting(currentDeviceId, isChecked) {
+  protectionEnabled = Boolean(isChecked);
+  localStorage.setItem(PROTECTION_STORAGE_KEY, String(protectionEnabled));
+  const status = document.getElementById("settings-status");
+  if (status) status.textContent = "변경 사항을 저장했습니다.";
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const currentDeviceId = deviceId;
+  loadExclude20PlusSetting(currentDeviceId);
+
+  const checkbox = document.getElementById("protection-toggle");
+  if (checkbox) {
+    checkbox.addEventListener("change", (event) => {
+      updateExclude20PlusSetting(currentDeviceId, event.target.checked);
+    });
+  }
+});
