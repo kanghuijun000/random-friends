@@ -362,7 +362,7 @@ function openSettings() {
 }
 async function loadSettingsProfile() {
   const currentYear = Number(new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", year: "numeric" }).format(new Date()));
-  // 기존 기기 저장 정보에도 가입일을 즉시 부여해 첫 매칭을 요구하지 않습니다.
+  const needsLegacyDate = !userProfile.registeredAt || !Number.isInteger(userProfile.registeredYear);
   if (!Number.isInteger(userProfile.registeredYear)) userProfile.registeredYear = currentYear;
   if (!userProfile.registeredAt) userProfile.registeredAt = new Date().toISOString();
   localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(userProfile));
@@ -375,6 +375,21 @@ async function loadSettingsProfile() {
       new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "long", day: "numeric" }).format(joined);
   };
   renderProfile();
+
+  // 과거 버전 사용자라면 서버에 이미 저장된 실제 가입일을 가져와 보정합니다.
+  if (needsLegacyDate) {
+    try {
+      const data = await api("get-profile", { deviceId });
+      if (data.profile?.createdAt) {
+        userProfile.registeredAt = data.profile.createdAt;
+        userProfile.registeredYear = currentYear - (data.profile.currentAge - userProfile.initialAge);
+        localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(userProfile));
+        renderProfile();
+      }
+    } catch (_) {
+      // 첫 매칭 전 계정은 서버 프로필이 없으므로 로컬 가입일을 그대로 사용합니다.
+    }
+  }
 }
 $("#open-settings").addEventListener("click", openSettings);
 $("#close-settings").addEventListener("click", () => show("home"));
