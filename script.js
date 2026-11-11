@@ -838,6 +838,32 @@ window.addEventListener("pagehide", () => {
   cleanupCall();
 });
 
+
+let deferredInstallPrompt = null;
+const installButton = $("#install-app");
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  installButton.hidden = false;
+});
+installButton.addEventListener("click", async () => {
+  if (!deferredInstallPrompt) {
+    alert("현재 브라우저에서 바로 설치 창을 열 수 없습니다. Chrome 메뉴(⋮)에서 '앱 설치' 또는 '홈 화면에 추가'를 선택해 주세요. 이미 설치했거나 설치 조건을 아직 충족하지 않은 경우에도 이 안내가 표시됩니다.");
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  installButton.hidden = true;
+});
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  installButton.hidden = true;
+});
+if (window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true) {
+  installButton.hidden = true;
+}
+
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
   let refreshingAfterUpdate = false;
 
