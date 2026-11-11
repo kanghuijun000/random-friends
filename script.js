@@ -77,7 +77,14 @@ function saveProfile() {
     $("#profile-error").textContent = "나이는 13~99세 사이의 정수로 입력해 주세요.";
     return;
   }
-  userProfile = { gender, initialAge };
+  const now = new Date();
+  userProfile = {
+    ...userProfile,
+    gender,
+    initialAge,
+    registeredYear: Number(new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", year: "numeric" }).format(now)),
+    registeredAt: now.toISOString(),
+  };
   localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(userProfile));
   profileModal.hidden = true;
   document.body.style.overflow = "";
@@ -354,23 +361,20 @@ function openSettings() {
   loadSettingsProfile();
 }
 async function loadSettingsProfile() {
-  $("#settings-gender").textContent = "불러오는 중";
-  $("#settings-age").textContent = "불러오는 중";
-  $("#settings-joined").textContent = "불러오는 중";
-  try {
-    const data = await api("get-profile", { deviceId });
-    const profile = data.profile;
-    if (!profile) throw new Error("PROFILE_NOT_FOUND");
-    $("#settings-gender").textContent = profile.gender === "female" ? "여성" : "남성";
-    $("#settings-age").textContent = profile.currentAge + "세";
-    const joined = new Date(profile.createdAt);
+  const currentYear = Number(new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", year: "numeric" }).format(new Date()));
+  // 기존 기기 저장 정보에도 가입일을 즉시 부여해 첫 매칭을 요구하지 않습니다.
+  if (!Number.isInteger(userProfile.registeredYear)) userProfile.registeredYear = currentYear;
+  if (!userProfile.registeredAt) userProfile.registeredAt = new Date().toISOString();
+  localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(userProfile));
+
+  const renderProfile = () => {
+    $("#settings-gender").textContent = userProfile.gender === "female" ? "여성" : "남성";
+    $("#settings-age").textContent = (userProfile.initialAge + currentYear - userProfile.registeredYear) + "세";
+    const joined = new Date(userProfile.registeredAt);
     $("#settings-joined").textContent = Number.isNaN(joined.getTime()) ? "확인 불가" :
       new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "long", day: "numeric" }).format(joined);
-  } catch (_) {
-    $("#settings-gender").textContent = userProfile.gender === "female" ? "여성" : "남성";
-    $("#settings-age").textContent = "첫 매칭 후 표시";
-    $("#settings-joined").textContent = "첫 매칭 후 표시";
-  }
+  };
+  renderProfile();
 }
 $("#open-settings").addEventListener("click", openSettings);
 $("#close-settings").addEventListener("click", () => show("home"));
