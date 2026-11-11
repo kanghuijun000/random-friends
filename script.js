@@ -917,23 +917,4 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") {
   };
 
   window.addEventListener("focus", checkRegisteredUpdate);
-document.addEventListener('DOMContentLoaded', () => {
-  // 상단에서 이미 만들어둔 전역 변수 deviceId를 그대로 사용합니다.
-  const currentDeviceId = deviceId;
-
-  // 1. 페이지가 켜지면 값 불러와서 체크박스에 반영
-  loadExclude20PlusSetting(
-    currentDeviceId
-  );
-
-  // 2. 체크박스 상태가 바뀔 때마다 DB에 즉시 업데이트
-  const checkbox = document.getElementById('exclude20PlusCheckbox');
-  if (checkbox) {
-    checkbox.addEventListener('change', (e) => {
-      const isChecked = e.target.checked;
-      updateExclude20PlusSetting(
-        currentDeviceId, isChecked
-      );
-    });
-  }
-});
+}
