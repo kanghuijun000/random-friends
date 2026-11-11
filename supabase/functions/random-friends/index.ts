@@ -111,6 +111,7 @@ Deno.serve(async (req) => {
       const minAge = Number.isInteger(filter.minAge) ? filter.minAge : 13;
       const maxAge = Number.isInteger(filter.maxAge) ? filter.maxAge : 99;
       const desiredGender = ["any", "male", "female"].includes(filter.gender) ? filter.gender : "any";
+      const exclude20Plus = body.exclude20Plus === true;
       if (minAge < 13 || maxAge > 99 || minAge > maxAge) return json({ error: "INVALID_FILTER" }, 400);
       const { error: profileInsertError } = await db.from("rf_profiles").upsert({
         device_id: deviceId,
@@ -121,10 +122,12 @@ Deno.serve(async (req) => {
         min_age: minAge,
         max_age: maxAge,
         desired_gender: desiredGender,
+        exclude_20_plus: exclude20Plus,
       }, { onConflict: "device_id", ignoreDuplicates: true });
       if (profileInsertError) throw profileInsertError;
       const { error: filterUpdateError } = await db.from("rf_profiles").update({
         filter_active: filterActive, min_age: minAge, max_age: maxAge, desired_gender: desiredGender,
+        exclude_20_plus: exclude20Plus,
       }).eq("device_id", deviceId);
       if (filterUpdateError) throw filterUpdateError;
 
