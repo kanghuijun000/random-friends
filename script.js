@@ -44,8 +44,6 @@ document.querySelectorAll('input[name="mode"]').forEach((el) => el.addEventListe
 const DEVICE_ID_KEY = "random-friends-device-id-v1";
 const PROFILE_STORAGE_KEY = "random-friends-profile-v1";
 const FILTER_STORAGE_KEY = "random-friends-match-filter-v2";
-const PROTECT_STORAGE_KEY = "random-friends-protect-under-20-v1";
-let protectUnder20 = localStorage.getItem(PROTECT_STORAGE_KEY) === "true";
 function makeDeviceId() {
   let id = localStorage.getItem(DEVICE_ID_KEY);
   if (!id) {
@@ -330,7 +328,6 @@ async function beginSearch() {
       deviceId,
       profile: userProfile,
       filter: matchFilter,
-      protectUnder20
     });
     sessionToken = data.sessionToken;
     sessionId = data.sessionId;
@@ -352,7 +349,6 @@ async function beginSearch() {
 
 function openSettings() {
   if (!userProfile) { showProfileSetup(); return; }
-  $("#protect-under-20").checked = protectUnder20;
   $("#settings-status").textContent = "";
   show("settings");
   loadSettingsProfile();
@@ -379,8 +375,6 @@ async function loadSettingsProfile() {
 $("#open-settings").addEventListener("click", openSettings);
 $("#close-settings").addEventListener("click", () => show("home"));
 $("#save-settings").addEventListener("click", () => {
-  protectUnder20 = $("#protect-under-20").checked;
-  localStorage.setItem(PROTECT_STORAGE_KEY, String(protectUnder20));
   $("#settings-status").textContent = "설정을 저장했습니다. 다음 매칭부터 적용됩니다.";
 });
 
