@@ -26,9 +26,12 @@ let busy = false;
 let currentChatRoomId = "";
 let chatPartnerAvailable = false;
 let lastChatNotice = "";
+$("#next-chat").disabled = true;
 
 function show(name) {
   screens.forEach((id) => $("#" + id).classList.toggle("active", id === name));
+  // 설정은 홈 화면에서만 열 수 있도록 매칭·대화·통화 중 숨깁니다.
+  $("#open-settings").hidden = name !== "home";
   window.scrollTo(0, 0);
 }
 function setHomeError(message = "") { $("#home-error").textContent = message; }
@@ -309,6 +312,7 @@ async function beginSearch() {
 
   currentChatRoomId = "";
   chatPartnerAvailable = false;
+  $("#next-chat").disabled = true;
   lastChatNotice = "";
   setChatNotice("");
   setHomeError("");
@@ -454,6 +458,7 @@ function showMatched(data) {
     }
     currentChatRoomId = nextRoomId;
     chatPartnerAvailable = true;
+    $("#next-chat").disabled = false;
     $("#message-input").disabled = false;
     $("#chat-form button").disabled = false;
     renderMessages(data.messages || []);
@@ -632,6 +637,7 @@ async function pollMatch() {
       if (data.room?.mode === "call") await pollSignals();
     } else if (data.partnerLeft && selectedMode === "chat") {
       chatPartnerAvailable = false;
+      $("#next-chat").disabled = true;
       $("#message-input").disabled = true;
       $("#chat-form button").disabled = true;
       const noticeKey = "left:" + currentChatRoomId;
@@ -713,6 +719,7 @@ async function nextMatch() {
     $("#next-call").disabled = true;
   }
   chatPartnerAvailable = false;
+  $("#next-chat").disabled = true;
   $("#message-input").disabled = true;
   $("#chat-form button").disabled = true;
   setChatNotice("새로운 상대를 찾고 있습니다.");
