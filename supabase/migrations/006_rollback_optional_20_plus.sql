@@ -44,7 +44,7 @@ begin
   insert into public.rf_rooms(mode, participant_a, participant_b) values (own_queue.mode, p_session_id, partner_id) returning id into new_room_id;
   return query select new_room_id, partner_id;
 end;
-$;
+$$;
 revoke all on function public.rf_match_session(uuid) from public, anon, authenticated;
 grant execute on function public.rf_match_session(uuid) to service_role;
 commit;
