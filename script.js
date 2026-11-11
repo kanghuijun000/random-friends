@@ -397,10 +397,10 @@ async function loadSettingsProfile() {
 $("#open-settings").addEventListener("click", openSettings);
 $("#close-settings").addEventListener("click", () => show("home"));
 $("#protection-toggle").checked = protectionEnabled;
-$("#save-settings").addEventListener("click", () => {
+$("#protection-toggle").addEventListener("change", () => {
   protectionEnabled = $("#protection-toggle").checked;
   localStorage.setItem(PROTECTION_STORAGE_KEY, String(protectionEnabled));
-  $("#settings-status").textContent = "설정을 저장했습니다. 다음 매칭부터 적용됩니다.";
+  $("#settings-status").textContent = "변경 사항을 저장했습니다.";
 });
 
 function setChatNotice(message) {
