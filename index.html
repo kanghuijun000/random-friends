@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css?v=21">
+  <link rel="stylesheet" href="./style.css?v=22">
   <title>Random Friends</title>
 </head>
 <body>
@@ -70,6 +70,13 @@
     <section id="settings" class="screen">
       <div class="settings-head"><button type="button" id="close-settings" class="settings-back">← 홈</button><div class="eyebrow">YOUR SETTINGS</div><h1>설정</h1><p>계정 정보와 추가 보호 설정을 관리합니다.</p></div>
       <div class="panel settings-panel"><h2>내 프로필</h2><div class="profile-info-row"><span>성별</span><b id="settings-gender">불러오는 중</b></div><div class="profile-info-row"><span>현재 나이</span><b id="settings-age">불러오는 중</b></div><div class="profile-info-row"><span>가입 날짜</span><b id="settings-joined">불러오는 중</b></div></div>
+      <div class="panel settings-panel">
+        <h2>미성년자 보호</h2>
+        <label class="protection-toggle" for="protection-toggle">
+          <input type="checkbox" id="protection-toggle">
+          <span><b>20세 이상 이용자 제외</b><small>켜면 매칭 대상에서 20세 이상 이용자를 추가로 제외합니다. 꺼도 미성년자와 성인의 기본 분리 규칙은 유지됩니다.</small></span>
+        </label>
+      </div>
       <div class="panel settings-panel"><h2>설정 안내</h2><p id="settings-status" class="settings-status" role="status"></p></div>
       <button type="button" id="save-settings" class="primary-btn">설정 저장</button>
     </section>
@@ -148,6 +155,6 @@
     </div>
     <footer>RANDOM FRIENDS <span>·</span> FREE FIRST</footer>
   </main>
-  <script src="./script.js?v=22"></script>
+  <script src="./script.js?v=23"></script>
 </body>
 </html>
