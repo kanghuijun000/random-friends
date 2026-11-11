@@ -43,6 +43,8 @@ document.querySelectorAll('input[name="mode"]').forEach((el) => el.addEventListe
 
 const DEVICE_ID_KEY = "random-friends-device-id-v1";
 const PROFILE_STORAGE_KEY = "random-friends-profile-v1";
+const PROTECTION_STORAGE_KEY = "random-friends-protection-v1";
+let protectionEnabled = localStorage.getItem(PROTECTION_STORAGE_KEY) !== "false";
 const FILTER_STORAGE_KEY = "random-friends-match-filter-v2";
 function makeDeviceId() {
   let id = localStorage.getItem(DEVICE_ID_KEY);
@@ -335,6 +337,7 @@ async function beginSearch() {
       deviceId,
       profile: userProfile,
       filter: matchFilter,
+      exclude20Plus: protectionEnabled,
     });
     sessionToken = data.sessionToken;
     sessionId = data.sessionId;
@@ -393,7 +396,10 @@ async function loadSettingsProfile() {
 }
 $("#open-settings").addEventListener("click", openSettings);
 $("#close-settings").addEventListener("click", () => show("home"));
+$("#protection-toggle").checked = protectionEnabled;
 $("#save-settings").addEventListener("click", () => {
+  protectionEnabled = $("#protection-toggle").checked;
+  localStorage.setItem(PROTECTION_STORAGE_KEY, String(protectionEnabled));
   $("#settings-status").textContent = "설정을 저장했습니다. 다음 매칭부터 적용됩니다.";
 });
 
