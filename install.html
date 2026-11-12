@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#10131b">
+  <meta name="description" content="Random Friends 앱 설치 안내">
+  <meta name="application-name" content="Random Friends">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Random Friends">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <title>Random Friends 설치</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -15%,#302b58 0,transparent 52%),#10131b;color:#f4f6fb;font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif;display:grid;place-items:center;padding:24px}
+    main{width:min(100%,440px);text-align:center}
+    .logo{width:76px;height:76px;margin:0 auto 18px;border-radius:23px;background:linear-gradient(135deg,#8d7cff,#5a4be0);display:grid;place-items:center;font-size:42px;font-weight:900;box-shadow:0 14px 40px #6555e544}
+    .eyebrow{font-size:10px;font-weight:800;letter-spacing:2px;color:#a99fff}
+    h1{font-size:30px;letter-spacing:-1px;margin:9px 0}
+    .lead{font-size:14px;line-height:1.7;color:#aab2c2;margin:0 auto 26px;max-width:340px}
+    .panel{background:#191e29;border:1px solid #2b3445;border-radius:19px;padding:20px;text-align:left;margin:12px 0}
+    .panel h2{font-size:15px;margin:0 0 9px}
+    .panel p,.steps{font-size:12px;line-height:1.7;color:#aab2c2;margin:0}
+    .steps{padding-left:20px;margin-top:9px}
+    button,.open-link{width:100%;min-height:52px;border:0;border-radius:14px;padding:14px 16px;background:linear-gradient(110deg,#8273ff,#6352e8);color:white;font-size:14px;font-weight:800;text-decoration:none;display:flex;align-items:center;justify-content:center;cursor:pointer}
+    .secondary{margin-top:10px;background:#252d3d;border:1px solid #3a4356;color:#e2e5ef}
+    #install-btn[hidden],#ios-help[hidden],#android-help[hidden],#installed-note[hidden]{display:none}
+    .note{font-size:11px;line-height:1.6;color:#778195;margin:17px 8px 0}
+    #status{font-size:12px;color:#b9afff;min-height:20px;margin:12px 0 0}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="logo" aria-hidden="true">R</div>
+    <div class="eyebrow">MEET SOMEONE NEW</div>
+    <h1>Random Friends</h1>
+    <p class="lead">앱을 설치하면 휴대전화 홈 화면에서 바로 실행할 수 있어요.</p>
+
+    <button id="install-btn" type="button" hidden>앱 설치하기</button>
+    <p id="status" role="status" aria-live="polite"></p>
+
+    <section class="panel" id="ios-help" hidden>
+      <h2>iPhone / iPad에서 설치하기</h2>
+      <p>Safari에서 앱을 연 다음 아래 순서로 진행해 주세요.</p>
+      <ol class="steps">
+        <li>화면 아래 또는 위의 공유 버튼을 누릅니다.</li>
+        <li>메뉴에서 '홈 화면에 추가'를 선택합니다.</li>
+        <li>'추가'를 눌러 설치를 완료합니다.</li>
+      </ol>
+      <a class="open-link secondary" href="./">먼저 앱 열기</a>
+    </section>
+
+    <section class="panel" id="android-help" hidden>
+      <h2>설치 버튼이 나타나지 않나요?</h2>
+      <p>Chrome 메뉴(⋮)에서 '앱 설치' 또는 '홈 화면에 추가'를 선택해 주세요.</p>
+    </section>
+
+    <section class="panel" id="installed-note" hidden>
+      <h2>이미 설치되어 있어요</h2>
+      <p>홈 화면의 Random Friends 아이콘으로 실행할 수 있습니다.</p>
+      <a class="open-link" href="./">Random Friends 열기</a>
+    </section>
+
+    <a class="open-link secondary" id="open-app" href="./">웹에서 바로 사용하기</a>
+    <p class="note">설치는 기기와 브라우저의 지원 여부에 따라 달라질 수 있습니다. 설치 과정에서 기기의 확인 절차가 표시됩니다.</p>
+  </main>
+
+  <script>
+    (() => {
+      const installButton = document.getElementById("install-btn");
+      const iosHelp = document.getElementById("ios-help");
+      const androidHelp = document.getElementById("android-help");
+      const installedNote = document.getElementById("installed-note");
+      const status = document.getElementById("status");
+      let installPrompt = null;
+
+      const standalone = () =>
+        window.matchMedia("(display-mode: standalone)").matches ||
+        window.navigator.standalone === true;
+
+      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+      if (standalone()) {
+        installedNote.hidden = false;
+        document.getElementById("open-app").hidden = true;
+      } else if (isIOS) {
+        iosHelp.hidden = false;
+        document.getElementById("open-app").hidden = true;
+      } else {
+        androidHelp.hidden = false;
+      }
+
+      window.addEventListener("beforeinstallprompt", (event) => {
+        event.preventDefault();
+        installPrompt = event;
+        installButton.hidden = false;
+        androidHelp.hidden = true;
+      });
+
+      installButton.addEventListener("click", async () => {
+        if (!installPrompt) {
+          status.textContent = "브라우저 메뉴에서 '앱 설치' 또는 '홈 화면에 추가'를 선택해 주세요.";
+          androidHelp.hidden = false;
+          return;
+        }
+        installButton.disabled = true;
+        installPrompt.prompt();
+        const choice = await installPrompt.userChoice;
+        installPrompt = null;
+        installButton.disabled = false;
+        installButton.hidden = true;
+        status.textContent = choice.outcome === "accepted"
+          ? "설치 요청을 완료했습니다."
+          : "설치가 취소되었습니다. 원할 때 다시 설치할 수 있습니다.";
+        androidHelp.hidden = choice.outcome === "accepted";
+      });
+
+      window.addEventListener("appinstalled", () => {
+        installPrompt = null;
+        installButton.hidden = true;
+        androidHelp.hidden = true;
+        installedNote.hidden = false;
+        document.getElementById("open-app").hidden = true;
+        status.textContent = "Random Friends 설치가 완료되었습니다.";
+      });
+
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
+            .then((registration) => registration.update())
+            .catch(() => {});
+        }, { once: true });
+      }
+    })();
+  </script>
+</body>
+</html>
