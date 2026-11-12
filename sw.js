@@ -1,4 +1,4 @@
-const CACHE = "random-friends-v29";
+const CACHE = "random-friends-v30";
 const FILES = [
   "./",
   "./index.html",
