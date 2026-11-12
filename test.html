@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#10131b">
+  <title>Random Friends · 매칭 시뮬레이터</title>
+  <style>
+    :root{color-scheme:dark;font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif;background:#10131b;color:#f4f6fb}
+    *{box-sizing:border-box}body{margin:0;padding:20px 14px 48px;background:#10131b}
+    main{max-width:850px;margin:0 auto}.top{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+    .mark{width:38px;height:38px;border-radius:12px;background:#6875f5;display:grid;place-items:center;font-weight:900}
+    .eyebrow{font-size:11px;letter-spacing:2px;color:#929bb0}.top strong{letter-spacing:1px}
+    h1{font-size:26px;margin:10px 0 8px}.intro{color:#aeb6c8;line-height:1.6;font-size:14px;margin:0 0 18px}
+    .notice{background:#1b2432;border:1px solid #34435a;border-radius:14px;padding:13px 14px;color:#dce5f5;font-size:13px;line-height:1.55;margin-bottom:16px}
+    .panel,.client{background:#191f2b;border:1px solid #2b3445;border-radius:16px;padding:16px;margin:12px 0}
+    .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.toolbar label{font-size:13px;color:#b8c0d0}
+    select,input{font:inherit;color:#f5f6fb;background:#111722;border:1px solid #3b465a;border-radius:9px;padding:10px;min-width:0}
+    select{width:100%}input[type=number]{width:100%}input[type=checkbox]{width:18px;height:18px;accent-color:#7c87ff}
+    button{border:0;border-radius:10px;padding:12px 16px;font-weight:750;background:#707cf3;color:white;cursor:pointer}
+    button.secondary{background:#2c3547;color:#e8ecf5}button:disabled{opacity:.5;cursor:wait}
+    .client-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+    .client-head b{font-size:15px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+    .field{display:flex;flex-direction:column;gap:6px}.field span{font-size:12px;color:#aeb8ca}
+    .checks{display:flex;gap:15px;flex-wrap:wrap;margin-top:14px}.check{display:flex;align-items:center;gap:7px;font-size:13px;color:#d4dbea}
+    .result{margin-top:16px}.result h2{font-size:18px;margin:18px 0 10px}
+    .result-card{background:#171e2a;border:1px solid #303b50;border-radius:12px;padding:13px;margin:8px 0;font-size:14px;line-height:1.55}
+    .ok{border-color:#367b67}.wait{border-color:#8a7040}.bad{color:#ffb8b8}
+    .muted{color:#9faabd;font-size:12px}.empty{color:#b9c2d1}
+    @media(max-width:520px){body{padding:16px 11px 36px}.grid{grid-template-columns:1fr}.panel,.client{padding:13px}h1{font-size:23px}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="top"><div class="mark">R</div><div><strong>RANDOM FRIENDS</strong><div class="eyebrow">MATCHING TEST LAB</div></div></div>
+  <h1>매칭 시뮬레이터</h1>
+  <p class="intro">가상 이용자들의 매칭 조건을 서버에서 검사합니다. 실제 이용자나 운영 대기열에는 접속하지 않습니다.</p>
+  <div class="notice"><b>안전한 테스트 모드</b><br>이 도구는 별도의 계산 전용 SQL 함수만 호출합니다. 운영 중인 rf_sessions, rf_queue, rf_rooms 데이터와 실제 매칭 함수는 읽거나 수정하지 않습니다. 실제 서버 통신·동시 접속 장애까지 재현하는 도구는 아닙니다.</div>
+  <section class="panel">
+    <div class="toolbar"><label for="client-count">가상 이용자 수</label><select id="client-count" style="width:100px"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select><button id="generate" class="secondary">이용자 생성</button><button id="run">매칭 시뮬레이션 실행</button></div>
+  </section>
+  <div id="clients"></div>
+  <section id="results" class="result" aria-live="polite"></section>
+</main>
+<script src="./test.js?v=1"></script>
+</body>
+</html>
