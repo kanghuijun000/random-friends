@@ -25,7 +25,7 @@
     .steps{padding-left:20px;margin-top:9px}
     button,.open-link{width:100%;min-height:52px;border:0;border-radius:14px;padding:14px 16px;background:linear-gradient(110deg,#8273ff,#6352e8);color:white;font-size:14px;font-weight:800;text-decoration:none;display:flex;align-items:center;justify-content:center;cursor:pointer}
     .secondary{margin-top:10px;background:#252d3d;border:1px solid #3a4356;color:#e2e5ef}
-    #install-btn[hidden],#ios-help[hidden],#android-help[hidden],#installed-note[hidden]{display:none}
+    #install-btn[hidden],#ios-help[hidden],#android-help[hidden],#installed-note[hidden],#chrome-open[hidden]{display:none}
     .note{font-size:11px;line-height:1.6;color:#778195;margin:17px 8px 0}
     #status{font-size:12px;color:#b9afff;min-height:20px;margin:12px 0 0}
   </style>
@@ -37,8 +37,12 @@
     <h1>Random Friends</h1>
     <p class="lead">앱을 설치하면 휴대전화 홈 화면에서 바로 실행할 수 있어요.</p>
 
-    <button id="install-btn" type="button" hidden>앱 설치하기</button>
+    <a class="open-link" id="chrome-open" hidden
+      href="intent://kanghuijun000.github.io/random-friends/install.html#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=https%3A%2F%2Fkanghuijun000.github.io%2Frandom-friends%2Finstall.html;end">
+      Chrome으로 열고 설치하기
+    </a>
     <p id="status" role="status" aria-live="polite"></p>
+    <button id="install-btn" type="button" hidden>앱 설치하기</button>
 
     <section class="panel" id="ios-help" hidden>
       <h2>iPhone / iPad에서 설치하기</h2>
@@ -53,7 +57,7 @@
 
     <section class="panel" id="android-help" hidden>
       <h2>설치 버튼이 나타나지 않나요?</h2>
-      <p>Chrome 메뉴(⋮)에서 '앱 설치' 또는 '홈 화면에 추가'를 선택해 주세요.</p>
+      <p>Chrome 메뉴(⋮)에서 '앱 설치' 또는 '홈 화면에 추가'를 선택해 주세요. 카카오톡 안에서 Chrome이 열리지 않으면 카카오톡 메뉴에서 '다른 브라우저로 열기'를 선택할 수 있어요.</p>
     </section>
 
     <section class="panel" id="installed-note" hidden>
@@ -63,16 +67,18 @@
     </section>
 
     <a class="open-link secondary" id="open-app" href="./">웹에서 바로 사용하기</a>
-    <p class="note">설치는 기기와 브라우저의 지원 여부에 따라 달라질 수 있습니다. 설치 과정에서 기기의 확인 절차가 표시됩니다.</p>
+    <p class="note">설치는 기기와 브라우저의 지원 여부에 따라 달라질 수 있습니다. Chrome 실행이나 설치 여부는 기기의 확인 절차에 따릅니다.</p>
   </main>
 
   <script>
     (() => {
       const installButton = document.getElementById("install-btn");
+      const chromeOpen = document.getElementById("chrome-open");
       const iosHelp = document.getElementById("ios-help");
       const androidHelp = document.getElementById("android-help");
       const installedNote = document.getElementById("installed-note");
       const status = document.getElementById("status");
+      const openApp = document.getElementById("open-app");
       let installPrompt = null;
 
       const standalone = () =>
@@ -81,15 +87,22 @@
 
       const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
         (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      const isAndroid = /android/i.test(navigator.userAgent);
+      const isKakao = /KAKAOTALK/i.test(navigator.userAgent);
 
       if (standalone()) {
         installedNote.hidden = false;
-        document.getElementById("open-app").hidden = true;
+        openApp.hidden = true;
       } else if (isIOS) {
         iosHelp.hidden = false;
-        document.getElementById("open-app").hidden = true;
+        openApp.hidden = true;
       } else {
         androidHelp.hidden = false;
+        if (isAndroid && isKakao) {
+          chromeOpen.hidden = false;
+          openApp.hidden = true;
+          status.textContent = "카카오톡 밖의 Chrome에서 설치할 수 있도록 열어 주세요.";
+        }
       }
 
       window.addEventListener("beforeinstallprompt", (event) => {
@@ -122,7 +135,8 @@
         installButton.hidden = true;
         androidHelp.hidden = true;
         installedNote.hidden = false;
-        document.getElementById("open-app").hidden = true;
+        openApp.hidden = true;
+        chromeOpen.hidden = true;
         status.textContent = "Random Friends 설치가 완료되었습니다.";
       });
 
