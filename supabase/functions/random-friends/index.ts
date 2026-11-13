@@ -53,11 +53,16 @@ Deno.serve(async (req) => {
         .gt("expires_at", new Date().toISOString())
         .maybeSingle();
       if (error || !data) throw new Error("INVALID_SESSION");
+      const requestCountry = String(req.headers.get("cf-ipcountry") || "").trim().toUpperCase();
+      const validRequestCountry = /^[A-Z]{2}$/.test(requestCountry) &&
+        requestCountry !== "XX" && requestCountry !== "T1";
+      const updatedCountry = validRequestCountry ? requestCountry : data.actual_country_code;
       await db.from("rf_sessions").update({
         last_seen_at: new Date().toISOString(),
         expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        ...(updatedCountry ? { actual_country_code: updatedCountry } : {}),
       }).eq("id", data.id);
-      return data;
+      return { ...data, actual_country_code: updatedCountry || null };
     }
 
     async function enqueue(session: any, excludedSessionId: string | null = null) {
@@ -177,9 +182,11 @@ Deno.serve(async (req) => {
       let room = await activeRoom(session.id);
       if (!room) {
         const { data: queued, error } = await db.from("rf_queue")
-          .select("session_id").eq("session_id", session.id).maybeSingle();
+          .select("session_id,actual_country_code").eq("session_id", session.id).maybeSingle();
         if (error) throw error;
-        if (!queued) await enqueue(session);
+        if (!queued || queued.actual_country_code !== session.actual_country_code) {
+          await enqueue(session);
+        }
         room = await activeRoom(session.id);
       }
       if (!room) return json({ status: "waiting", partnerLeft: previousRoomEnded });
