@@ -11,7 +11,8 @@ function clientCard(index) {
       <div class="grid">
         <label class="field"><span>매칭 방식</span><select data-field="mode"><option value="chat">랜덤채팅</option><option value="call">랜덤통화</option></select></label>
         <label class="field"><span>매칭 범위</span><select data-field="scope"><option value="country">국가 선택</option><option value="world">전 세계</option></select></label>
-        <label class="field"><span>국가</span><select data-field="countryCode"><option value="KR">대한민국</option><option value="JP">일본</option><option value="US">미국</option><option value="GB">영국</option><option value="CA">캐나다</option><option value="DE">독일</option></select></label>
+        <label class="field"><span>선택한 국가</span><select data-field="countryCode"><option value="KR">대한민국</option><option value="JP">일본</option><option value="US">미국</option><option value="GB">영국</option><option value="CA">캐나다</option><option value="DE">독일</option></select></label>
+        <label class="field"><span>실제 접속 국가 (가상)</span><select data-field="actualCountryCode"><option value="KR">대한민국</option><option value="JP">일본</option><option value="US">미국</option><option value="GB">영국</option><option value="CA">캐나다</option><option value="DE">독일</option></select></label>
         <label class="field"><span>현재 나이</span><input data-field="age" type="number" min="13" max="99" value="16" inputmode="numeric"></label>
         <label class="field"><span>성별</span><select data-field="gender"><option value="male" ${gender === "male" ? "selected" : ""}>남성</option><option value="female" ${gender === "female" ? "selected" : ""}>여성</option></select></label>
         <label class="field"><span>상대 성별 필터</span><select data-field="desiredGender"><option value="any">무관</option><option value="male">남성</option><option value="female">여성</option></select></label>
@@ -40,6 +41,7 @@ function readClients() {
       mode: get("mode").value,
       scope,
       countryCode: scope === "country" ? get("countryCode").value : null,
+      actualCountryCode: get("actualCountryCode").value,
       age: Number(get("age").value),
       gender: get("gender").value,
       filterActive: get("filterActive").checked,
