@@ -26,6 +26,7 @@ let busy = false;
 let currentChatRoomId = "";
 let chatPartnerAvailable = false;
 let lastChatNotice = "";
+let chatSwitchRequested = false;
 $("#next-chat").disabled = true;
 
 function show(name) {
@@ -450,8 +451,11 @@ function showMatched(data) {
     if (!$("#chat").classList.contains("active")) show("chat");
     if (changedRoom) {
       $("#messages").replaceChildren();
-      setChatNotice("상대방이 퇴장했습니다. 새로운 상대방과 연결되었습니다.");
+      setChatNotice(chatSwitchRequested
+        ? "새로운 상대방과 연결되었습니다."
+        : "상대방이 퇴장했습니다. 새로운 상대방과 연결되었습니다.");
       lastChatNotice = "new:" + nextRoomId;
+      chatSwitchRequested = false;
     } else if (data.partnerLeft && lastChatNotice !== "left:" + currentChatRoomId) {
       setChatNotice("상대방이 퇴장했습니다. 새로운 상대를 찾고 있습니다.");
       lastChatNotice = "left:" + currentChatRoomId;
@@ -640,9 +644,11 @@ async function pollMatch() {
       $("#next-chat").disabled = true;
       $("#message-input").disabled = true;
       $("#chat-form button").disabled = true;
-      const noticeKey = "left:" + currentChatRoomId;
+      const noticeKey = (chatSwitchRequested ? "switching:" : "left:") + currentChatRoomId;
       if (lastChatNotice !== noticeKey) {
-        setChatNotice("상대방이 퇴장했습니다. 새로운 상대를 찾고 있습니다.");
+        setChatNotice(chatSwitchRequested
+          ? "상대를 변경했습니다. 새로운 상대를 찾고 있습니다."
+          : "상대방이 퇴장했습니다. 새로운 상대를 찾고 있습니다.");
         lastChatNotice = noticeKey;
       }
     } else if (selectedMode === "call" && $("#call").classList.contains("active")) {
@@ -722,12 +728,19 @@ async function nextMatch() {
   $("#next-chat").disabled = true;
   $("#message-input").disabled = true;
   $("#chat-form button").disabled = true;
-  setChatNotice("새로운 상대를 찾고 있습니다.");
   $("#messages").replaceChildren();
-  show(selectedMode === "call" ? "call" : "matching");
-  $("#matching-mode-label").textContent = selectedMode === "chat" ? "RANDOM CHAT" : "RANDOM CALL";
-  $("#matching-description").textContent = "다음 상대를 찾고 있습니다.";
-  setMatchingStatus("매칭 대기 중");
+  if (selectedMode === "chat") {
+    chatSwitchRequested = true;
+    lastChatNotice = "switching:" + currentChatRoomId;
+    setChatNotice("상대를 변경했습니다. 새로운 상대를 찾고 있습니다.");
+    show("chat");
+  } else {
+    setChatNotice("새로운 상대를 찾고 있습니다.");
+    show("call");
+    $("#matching-mode-label").textContent = "RANDOM CALL";
+    $("#matching-description").textContent = "다음 상대를 찾고 있습니다.";
+    setMatchingStatus("매칭 대기 중");
+  }
   try {
     await api("next");
     startPolling();
@@ -754,6 +767,7 @@ async function endMatch() {
   lastCallRoomId = "";
   chatPartnerAvailable = false;
   lastChatNotice = "";
+  chatSwitchRequested = false;
   setChatNotice("");
   $("#message-input").value = "";
   $("#message-input").disabled = true;
