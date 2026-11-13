@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
       if (rawToken.length < 40) throw new Error("INVALID_SESSION");
       const tokenHash = await hash(rawToken);
       const { data, error } = await db.from("rf_sessions")
-        .select("id,mode,scope,country_code,expires_at")
+        .select("id,mode,scope,country_code,actual_country_code,expires_at")
         .eq("token_hash", tokenHash)
         .gt("expires_at", new Date().toISOString())
         .maybeSingle();
@@ -66,6 +66,7 @@ Deno.serve(async (req) => {
         mode: session.mode,
         scope: session.scope,
         country_code: session.country_code,
+        actual_country_code: session.actual_country_code,
         excluded_session_id: excludedSessionId,
         queued_at: new Date().toISOString(),
       });
@@ -100,6 +101,13 @@ Deno.serve(async (req) => {
       const countryCode = scope === "country" ? String(body.countryCode || "").toUpperCase() : null;
       if (scope === "country" && !/^[A-Z]{2}$/.test(countryCode || "")) {
         return json({ error: "INVALID_COUNTRY" }, 400);
+      }
+
+      // Cloudflare adds this country code at the Supabase edge. Never trust a
+      // country supplied by the browser for the user's physical location.
+      const actualCountryCode = String(req.headers.get("cf-ipcountry") || "").trim().toUpperCase();
+      if (!/^[A-Z]{2}$/.test(actualCountryCode) || actualCountryCode === "XX" || actualCountryCode === "T1") {
+        return json({ error: "COUNTRY_DETECTION_FAILED" }, 503);
       }
 
       const deviceId = String(body.deviceId || "");
@@ -139,13 +147,14 @@ Deno.serve(async (req) => {
         mode,
         scope,
         country_code: countryCode,
+        actual_country_code: actualCountryCode,
         device_id: deviceId,
         token_hash: tokenHash,
         expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
       });
       if (error) throw error;
 
-      const session = { id: sessionId, mode, scope, country_code: countryCode };
+      const session = { id: sessionId, mode, scope, country_code: countryCode, actual_country_code: actualCountryCode };
       await enqueue(session);
       const room = await activeRoom(sessionId);
       return json({ sessionId, sessionToken, status: room ? "matched" : "waiting", room });
@@ -208,7 +217,7 @@ Deno.serve(async (req) => {
         partnerId = room.participant_a === session.id ? room.participant_b : room.participant_a;
         await db.from("rf_rooms").update({ status: "ended", ended_at: new Date().toISOString() }).eq("id", room.id);
         const { data: partner, error } = await db.from("rf_sessions")
-          .select("id,mode,scope,country_code").eq("id", partnerId)
+          .select("id,mode,scope,country_code,actual_country_code").eq("id", partnerId)
           .gt("expires_at", new Date().toISOString()).maybeSingle();
         if (error) throw error;
         if (partner) await enqueue(partner, session.id);
