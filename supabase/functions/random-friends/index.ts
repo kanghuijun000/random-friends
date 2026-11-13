@@ -233,7 +233,7 @@ Deno.serve(async (req) => {
         const partnerId = room.participant_a === session.id ? room.participant_b : room.participant_a;
         await db.from("rf_rooms").update({ status: "ended", ended_at: new Date().toISOString() }).eq("id", room.id);
         const { data: partner, error } = await db.from("rf_sessions")
-          .select("id,mode,scope,country_code").eq("id", partnerId)
+          .select("id,mode,scope,country_code,actual_country_code").eq("id", partnerId)
           .gt("expires_at", new Date().toISOString()).maybeSingle();
         if (error) throw error;
         if (partner) await enqueue(partner, session.id);
