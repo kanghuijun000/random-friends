@@ -71,31 +71,81 @@ async function runSimulation() {
   button.disabled = true;
   button.textContent = "검사 중...";
   results.replaceChildren();
+
   try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rf_simulate_matching`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": SUPABASE_KEY,
-        "Authorization": `Bearer ${SUPABASE_KEY}`
-      },
-      body: JSON.stringify({ p_clients: clients })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const message = data.message || data.error || data.details || `HTTP ${response.status}`;
-      throw new Error(message);
+    const waiting = [];
+    const pairs = [];
+    const checks = [];
+
+    // Use the SQL pair-check function created by migration 010.
+    // Matching itself is simulated locally; no live queue or room is touched.
+    async function checkPair(own, partner) {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rf_test_pair_check`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${SUPABASE_KEY}`
+        },
+        body: JSON.stringify({ p_own: own, p_partner: partner })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.message || data.details || data.hint || data.error || `HTTP ${response.status}`);
+      }
+      return data;
+    }
+
+    // Greedy queue simulation: each client joins in order and can be paired once.
+    for (const joiningClient of clients) {
+      let matchedIndex = -1;
+
+      for (let i = 0; i < waiting.length; i++) {
+        const waitingClient = waiting[i];
+        if (joiningClient.mode !== waitingClient.mode) {
+          checks.push({
+            joiningClient: joiningClient.id,
+            waitingClient: waitingClient.id,
+            eligible: false,
+            reasons: ["매칭 방식이 다름"]
+          });
+          continue;
+        }
+
+        const result = await checkPair(joiningClient, waitingClient);
+        checks.push({
+          joiningClient: joiningClient.id,
+          waitingClient: waitingClient.id,
+          eligible: !!result.eligible,
+          reasons: Array.isArray(result.reasons) ? result.reasons : []
+        });
+
+        if (result.eligible) {
+          matchedIndex = i;
+          pairs.push({
+            clientA: waitingClient.id,
+            clientB: joiningClient.id,
+            mode: joiningClient.mode,
+            scope: joiningClient.scope,
+            countryCode: joiningClient.countryCode
+          });
+          break;
+        }
+      }
+
+      if (matchedIndex >= 0) waiting.splice(matchedIndex, 1);
+      else waiting.push(joiningClient);
     }
 
     const heading = document.createElement("h2");
-    heading.textContent = `검사 결과 · ${data.totalClients}명`;
+    heading.textContent = `검사 결과 · ${clients.length}명`;
     results.append(heading);
 
-    if (data.pairs.length) {
+    if (pairs.length) {
       const pairHeading = document.createElement("h2");
       pairHeading.textContent = "매칭 성공";
       results.append(pairHeading);
-      data.pairs.forEach((pair) => {
+      pairs.forEach((pair) => {
         addResultCard(results, "ok", `${pair.clientA} ↔ ${pair.clientB}`,
           `${pair.mode === "chat" ? "랜덤채팅" : "랜덤통화"} · ${pair.scope === "world" ? "전 세계" : pair.countryCode}`);
       });
@@ -104,10 +154,10 @@ async function runSimulation() {
     }
 
     const waitingHeading = document.createElement("h2");
-    waitingHeading.textContent = `대기 상태 · ${data.waiting.length}명`;
+    waitingHeading.textContent = `대기 상태 · ${waiting.length}명`;
     results.append(waitingHeading);
-    if (data.waiting.length) {
-      addResultCard(results, "wait", data.waiting.join(", "), "조건에 맞는 대상을 찾지 못해 대기열에 남는 상황입니다.");
+    if (waiting.length) {
+      addResultCard(results, "wait", waiting.map(client => client.id).join(", "), "조건에 맞는 대상을 찾지 못해 대기열에 남는 상황입니다.");
     } else {
       addResultCard(results, "ok", "대기 중인 이용자가 없습니다.", "입력한 이용자들이 모두 매칭됐습니다.");
     }
@@ -115,10 +165,10 @@ async function runSimulation() {
     const checksHeading = document.createElement("h2");
     checksHeading.textContent = "조건별 검사 기록";
     results.append(checksHeading);
-    if (!data.checks.length) {
+    if (!checks.length) {
       addResultCard(results, "", "검사할 대기 상대가 없었습니다.", "가상 이용자 수와 입력값을 확인하세요.");
     } else {
-      data.checks.forEach((check) => {
+      checks.forEach((check) => {
         const detail = check.eligible ? "모든 조건 통과" : check.reasons.join(" · ");
         addResultCard(results, check.eligible ? "ok" : "wait",
           `${check.joiningClient} → 대기 중인 ${check.waitingClient}: ${check.eligible ? "가능" : "불가"}`, detail);
@@ -127,20 +177,19 @@ async function runSimulation() {
 
     const note = document.createElement("p");
     note.className = "muted";
-    note.textContent = data.note;
+    note.textContent = "국가·연령·성별 필터 판정은 Supabase의 rf_test_pair_check SQL 함수를 사용합니다. 가상 대기열과 매칭 순서는 테스트 페이지 안에서만 계산합니다.";
     results.append(note);
   } catch (error) {
     addResultCard(results, "bad", "시뮬레이션 실행 실패", error.message || "알 수 없는 오류");
     const hint = document.createElement("p");
     hint.className = "muted";
-    hint.textContent = "SQL 008을 아직 실행하지 않았거나 Supabase API 연결에 문제가 있을 수 있습니다.";
+    hint.textContent = "마이그레이션 010의 rf_test_pair_check(jsonb, jsonb) 함수가 적용됐는지, Supabase API의 함수 스키마 캐시가 갱신됐는지 확인하세요.";
     results.append(hint);
   } finally {
     button.disabled = false;
     button.textContent = "매칭 시뮬레이션 실행";
   }
 }
-
 $("#generate").addEventListener("click", generateClients);
 $("#run").addEventListener("click", runSimulation);
 generateClients();
